@@ -1,9 +1,6 @@
-# admisible-interval-orders-bci
+# Table of contents
 
-# Table of contents- [admisible-interval-orders-bci](#admisible-interval-orders-bci)
-
-- [admisible-interval-orders-bci](#admisible-interval-orders-bci)
-- [Table of contents- admisible-interval-orders-bci](#table-of-contents--admisible-interval-orders-bci)
+- [Table of contents](#table-of-contents)
   - [Commits guide](#commits-guide)
 
 ## Commits guide
