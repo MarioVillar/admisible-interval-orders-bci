@@ -18,6 +18,7 @@ import constants
 
 from preprocessing.test_sklearn_transformer import PrintTransformer
 from preprocessing.band_pass_filters import BandPassFilterEnsemble
+from src.preprocessing.csp_ensemble import CSPEnsemble
 from preprocessing.time_frequency_filter import time_freq_filter_init
 
 
@@ -55,8 +56,13 @@ bpfe = BandPassFilterEnsemble(frec_ranges=constants.FREQ_BANDS_RANGES, sfreq=sfr
 
 
 ##############################################################################
+# Create CSP ensemble
+cspe = CSPEnsemble(n_components=constants.CSP_COMPONENTS, n_frec_ranges=len(constants.FREQ_BANDS_RANGES))
+
+
+##############################################################################
 # Pipeline
-pipeline = make_pipeline(bpfe, PrintTransformer())
+pipeline = make_pipeline(bpfe, cspe, PrintTransformer())
 
 
 ##############################################################################
