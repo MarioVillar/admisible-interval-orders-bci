@@ -3,7 +3,7 @@ from sklearn.ensemble import VotingClassifier
 from sklearn.utils.validation import check_is_fitted
 
 
-class IntvlChoquetClassifier(VotingClassifier):
+class IntvlModelEnsemble(VotingClassifier):
     """Interval Choquet integral classification model ensemble.
 
     The predictions of each class is returned as an interval. For each class, the infimum and supremum of the
