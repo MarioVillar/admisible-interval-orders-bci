@@ -4,7 +4,6 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 import mne
-from mne.decoding import CSP
 
 from sklearn.pipeline import make_pipeline
 from sklearn.svm import SVC
@@ -18,8 +17,7 @@ from moabb.paradigms import LeftRightImagery
 import constants
 
 from preprocessing.test_sklearn_transformer import PrintTransformer
-
-
+from preprocessing.band_pass_filters import BandPassFilterEnsemble
 from preprocessing.time_frequency_filter import time_freq_filter_init
 
 
@@ -39,18 +37,27 @@ dataset = BNCI2014_004()
 # Create time frequency filter
 
 # Obtain sample frequency of the data
+# subject_data = dataset.get_data(subjects=[1])
+# sfreq = subject_data[1][list(subject_data[1].keys())[0]]["0"].info["sfreq"]
+
+# # Initialize the TimeFrequency object
+# tft = time_freq_filter_init(sfreq=sfreq)
+
+
+##############################################################################
+# Create band-pass filters ensemble
+
+# Obtain sample frequency of the data
 subject_data = dataset.get_data(subjects=[1])
 sfreq = subject_data[1][list(subject_data[1].keys())[0]]["0"].info["sfreq"]
 
-# Initialize the TimeFrequency object
-tft = time_freq_filter_init(sfreq=sfreq)
+bpfe = BandPassFilterEnsemble(frec_ranges=constants.FREQ_BANDS_RANGES, sfreq=sfreq)
 
 
 ##############################################################################
 # Pipeline
-pipeline = make_pipeline(
-    tft, PrintTransformer(), CSP(n_components=constants.CSP_COMPONENTS), SVC(C=0.1, kernel="linear")
-)
+pipeline = make_pipeline(bpfe, PrintTransformer())
+
 
 ##############################################################################
 # Choose paradigm and evaluation
