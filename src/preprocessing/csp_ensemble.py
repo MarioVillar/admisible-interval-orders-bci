@@ -5,7 +5,12 @@ from joblib import Parallel, delayed
 
 
 class CSPEnsemble(BaseEstimator, TransformerMixin):
-    """Applies CPS to each of the data series separated by band-pass filters in a previous step."""
+    """
+    CSP Ensemble applied to each frequency range.
+    -
+
+    Applies CPS to each of the data series separated by band-pass filters in a previous step.
+    """
 
     def __validate_params(self, check_csp_list: bool = False) -> None:
         """Validates the parameters of the transformer.
@@ -52,35 +57,31 @@ class CSPEnsemble(BaseEstimator, TransformerMixin):
         self.n_jobs = n_jobs
         self.kwargs = kwargs
 
-    def fit(self, X, y=None):
+    def fit(self, X, y):
         """
         Estimate the CSP decomposition on epochs.
 
         Parameters
         ----------
         X : array-like of shape (n_frec_ranges, n_samples, n_features)
-            Ignored.
+            Input samples.
 
-        y :  array-like of shape (n_samples,) or (n_samples, n_outputs), \
-                default=None
-            Ignored.
+        y :  array-like of shape (n_samples,) or (n_samples, n_outputs)
+            The class for each epoch.
 
         Returns
         -------
-        self : object
-            Fitted (no changes) transformer.
+        self : object of CSPEnsemble
+            The fitted instance.
         """
         self.__validate_params()
 
         # Defined for parallelization purposes
         def fit_csp(series):
-            print("Series shape: ", series.shape)
-            csp = CSP(n_components=self.n_components, **self.kwargs)
-            csp.fit(series, y)
-            return csp
+            return CSP(n_components=self.n_components, **self.kwargs).fit(series, y)
 
         # Run in parallel mode
-        self.csp_list = Parallel(n_jobs=self.n_jobs)(delayed(fit_csp)(series.copy()) for series in X)
+        self.csp_list = Parallel(n_jobs=self.n_jobs)(delayed(fit_csp)(series) for series in X)
 
         # # For each frequency range, create a new CSP object, fit it to the data
         # #   and store it in the list of CSP objects

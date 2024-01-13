@@ -4,7 +4,9 @@ from sklearn.utils.validation import check_is_fitted
 
 
 class IntvlModelEnsemble(VotingClassifier):
-    """Interval Choquet integral classification model ensemble.
+    """
+    Interval Choquet integral classification model ensemble.
+    -
 
     The predictions of each class is returned as an interval. For each class, the infimum and supremum of the
         corresponding interval are derived by determining the minimum and maximum predictions, respectively,
@@ -12,7 +14,7 @@ class IntvlModelEnsemble(VotingClassifier):
     To determine the winning class, the interval Choquet integral is applied to the interval predictions.
     """
 
-    def predict_proba(self, X) -> np.ndarray:
+    def predict_proba(self, X: np.array) -> np.ndarray:
         """Predict class probabilities for X.
 
         Parameters

@@ -4,7 +4,9 @@ import numpy as np
 
 
 class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
-    """Applies several band-pass filters to the data.
+    """
+    Applies several band-pass filters to the data.
+    -
 
     For each frequency range, a band-pass filter is applied to the data.
     A new axis is created in the original data, and the output of each filter is concatenated on it.
@@ -45,7 +47,7 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
         self.frec_ranges = frec_ranges
         self.sfreq = sfreq
 
-    def fit(self, X, y=None):
+    def fit(self, X: np.array, y: np.array = None):
         """
         Only here to make it compatible with sklearn pipelines.
         There are no hyperparameters to tune for this transformer.
@@ -67,7 +69,7 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
         self.__validate_params()
         return self
 
-    def transform(self, X, y=None):
+    def transform(self, X: np.array, y: np.array = None) -> np.array:
         """
         Applies the band-pass filters to the data.
 
@@ -88,12 +90,9 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
         """
         self.__validate_params()
 
-        X_transformed = []
-        # X_transformed = np.empty((0, *X.shape))
-
-        for frec_range in self.frec_ranges:
-            X_transformed.append(filter_data(X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1]))
-            # X_filtered = filter_data(X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1])
-            # X_transformed = np.concatenate([X_transformed, [X_filtered]], axis=2)
+        X_transformed = [
+            filter_data(X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1])
+            for frec_range in self.frec_ranges
+        ]
 
         return np.array(X_transformed)

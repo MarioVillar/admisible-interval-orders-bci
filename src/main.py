@@ -18,8 +18,10 @@ import constants
 
 from preprocessing.test_sklearn_transformer import PrintTransformer
 from preprocessing.band_pass_filters import BandPassFilterEnsemble
-from src.preprocessing.csp_ensemble import CSPEnsemble
+from preprocessing.csp_ensemble import CSPEnsemble
 from preprocessing.time_frequency_filter import time_freq_filter_init
+
+from model.intvl_choquet_ensemble import IntvlChoquetEnsemble
 
 
 mne.set_log_level("CRITICAL")
@@ -61,8 +63,23 @@ cspe = CSPEnsemble(n_components=constants.CSP_COMPONENTS, n_frec_ranges=len(cons
 
 
 ##############################################################################
+# Create Model Ensemble
+model_types_list = [SVC, RandomForestClassifier]
+model_class_kwargs = [{"C": 0.1, "kernel": "linear", "probability": True}, {}]
+model_class_names = ["svc", "rfc"]
+
+# Create the ensemble
+icens = IntvlChoquetEnsemble.create_ensemble(
+    model_class_list=model_types_list,
+    model_class_names=model_class_names,
+    n_frec_ranges=len(constants.FREQ_BANDS_RANGES),
+    model_class_kwargs=model_class_kwargs,
+)
+
+
+##############################################################################
 # Pipeline
-pipeline = make_pipeline(bpfe, cspe, PrintTransformer())
+pipeline = make_pipeline(bpfe, cspe, icens)
 
 
 ##############################################################################
