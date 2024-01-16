@@ -24,7 +24,7 @@ class IntvlModelEnsemble(VotingClassifier):
 
         Returns
         -------
-        p : array-like of shape (n_classes, 2)
+        p : array-like of shape (n_classes, n_samples, 2)
             The class probabilities of the input samples. Classes are ordered by lexicographic order.
         """
         check_is_fitted(self)

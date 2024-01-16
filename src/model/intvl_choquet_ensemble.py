@@ -1,6 +1,7 @@
 from joblib import Parallel, delayed
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
+from typing import Any
 
 from .intvl_model_ensemble import IntvlModelEnsemble
 
@@ -17,7 +18,9 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
     def __validate_params(self):
         assert len(self.ind_ensembles) > 0, "There should be at least one individual ensemble"
 
-    def __init__(self, ind_ensembles: list = [], n_jobs: int = -1) -> None:
+    def __init__(
+        self, ind_ensembles: list = [], n_jobs: int = -1, _estimator_type: Any = None, fuzzy_measure: Any = None
+    ) -> None:
         """
         Parameters
         ----------
@@ -25,10 +28,15 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             List of IntvlModelEnsemble objects.
         - n_jobs : int
             Number of jobs to run in parallel.
+        - _estimator_type : str
+            Not used. Only for scikit-learn compatibility purposes (so it gest added to get_params() method).
+        - fuzzy_measure : array-like of shape (N,)
+            Not used. Only for scikit-learn compatibility purposes (so it gest added to get_params() method).
         """
         self.ind_ensembles = ind_ensembles
         self.n_jobs = n_jobs
         self._estimator_type = "regressor"
+        self.fuzzy_measure = self.card_fuzzy_measure(len(self.ind_ensembles))
 
     @classmethod
     def create_ensemble(
@@ -137,6 +145,8 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             Predicted class label per sample.
         """
         class_probs = self.predict_proba(X)
+
+        # This should be done by using a K-lambda mapping
         return np.argmax(class_probs, axis=1)
 
     def predict_proba(self, X: np.array) -> np.array:
@@ -150,7 +160,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
 
         Returns
         -------
-        - y : array-like of shape (n_samples, n_classes)
+        - y : array-like of shape (n_frec_ranges, n_classes, n_samples, 2)
             Class probabilities of the input samples.
         """
         self.__validate_params()
@@ -169,3 +179,49 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         y = np.mean(np.array(y), axis=0)
 
         return y
+
+    def card_fuzzy_measure(self, N: int, p: float = 1) -> np.ndarray:
+        """
+        Fuzzy measure based on the cardinality of a set.
+        -
+        Calculate the cardinality fuzzy measure of each subset of a set with size N.
+
+        Parameters
+        ----------
+        - N : int
+            Cardinality of the set.
+        - p : float
+            Exponent to which the expression is raised.
+
+        Returns
+        -------
+        - fuzzy_measure : array-like of shape (N+1,)
+            Value of the fuzzy measure of each subset of the set (including the empty set).
+        """
+        return np.array([(x / N) ** p for x in np.arange(0, N + 1)])
+
+    def intvl_choquet_integ_permu(self, intvl_set: np.ndarray, permu_idxs: np.ndarray) -> np.ndarray:
+        """
+        Interval Choquet integral given a specific permutation.
+
+        Parameters
+        ----------
+        - intvl_set : array-like of shape (n_frec_ranges,)
+            Set of intervals to be used in the Choquet integral.
+        - permu_idxs : array-like of shape (n_frec_ranges,)
+            Current permutation of the set of intervals.
+
+        Returns
+        -------
+        - intvl_choquet_integ : array-like of shape (2,)
+            Resulting interval obtained by the Choquet integral.
+        """
+        n = len(intvl_set)  # n_frec_ranges
+
+        # Obtain the array of fuzzy measure differences that multiplies each interval in the summatory
+        fuzzy_measure_diff = (
+            self.fuzzy_measure[n - np.arange(len(permu_idxs))] - self.fuzzy_measure[n - np.arange(len(permu_idxs)) - 1]
+        )
+
+        # Multiply each fuzzy measure difference by the corresponding interval and compute the sumatory of resulting intervals
+        return np.sum((intvl_set[permu_idxs].transpose() * fuzzy_measure_diff).transpose(), axis=0)
