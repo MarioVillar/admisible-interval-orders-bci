@@ -2,6 +2,7 @@ from joblib import Parallel, delayed
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
 from typing import Any
+from itertools import permutations
 
 from .intvl_model_ensemble import IntvlModelEnsemble
 
@@ -200,16 +201,204 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         """
         return np.array([(x / N) ** p for x in np.arange(0, N + 1)])
 
-    def intvl_choquet_integ_permu(self, intvl_set: np.ndarray, permu_idxs: np.ndarray) -> np.ndarray:
+    def intvl_choquet_integ(self, intvl_set: np.ndarray) -> np.ndarray:
+        """
+        Interval Choquet integral.
+        -
+        The resulting value is obtained as the arithmetic mean of the interval Choquet integrals
+        computed for each admissible permutation.
+
+        A permutation sigma is admissible if:
+        - for every` x_i < x_j` , we have that `sigma^-1(i) < sigma^-1(j)`
+        - for each `x_i`, the set `{sigma^-1(j) | j ∈ {1,...,n} with x_i = x_j }` is an interval in `N` (natutal
+            numbers set).
+
+        Where `sigma^-1` is the inverse permutation, i.e., the function that maps each original index to the permutated one.
+
+        Parameters
+        ----------
+        - intvl_set : array-like of shape (n_frec_ranges, 2)
+            Set of intervals to be used in the Choquet integral.
+
+        Returns
+        -------
+        - intvl_choquet_integ : array-like of shape (2,)
+            Resulting interval obtained by the Choquet integral.
+        """
+
+        # Defined for parallelization purposes
+        def compute_choquet_integ_permu(sigma):
+            """
+            Compute the interval Choquet integral for a specific admissible permutation.
+
+            Parameters
+            ----------
+            - sigma : array-like of shape (n_frec_ranges,)
+                Current permutation of the set of intervals. Index i contains the index in the original vector of
+                    the element that has been mapped to position i by the permutation.
+
+            Returns
+            -------
+            - choquet_integ_permu : list of shape (2,2)
+                First component has the meaning of whether the permutation was admissible (1) or not (0). It has
+                    shape (2,) to be able to use np arrays over the Parallel function result. The sum of its first
+                    component is the number of admissible permutations found.
+                Second component is the resulting interval obtained by the Choquet integral (admissible permutations)
+                    or zero interval (non-admissible permutations, so they do not influence on the summatory).
+            """
+            if self.is_admissible_permu(intvl_set=intvl_set, sigma=sigma):
+                return [[1, 1], self.intvl_choquet_integ_permu(intvl_set, np.array(sigma))]
+            else:
+                return [[0, 0], [0, 0]]
+
+        orig_indexes = np.arange(len(intvl_set))
+
+        # Obtain all permutations
+        sigma_list = permutations(orig_indexes)
+
+        # Run in parallel mode
+        results = np.array(
+            Parallel(n_jobs=self.n_jobs)(delayed(compute_choquet_integ_permu)(sigma) for sigma in sigma_list)
+        )
+
+        # Compute the sum of interval Choquet integrals and count the number of admissible permutations
+        n_admissible_permus = np.sum(results[:, 0, 0])
+        choquet_integ_sum = np.sum(results[:, 1], axis=0)
+
+        # for sigma in sigma_list:
+        #     # Check if the permutation is admissible
+        #     if self.is_admissible_permu(intvl_set=intvl_set, sigma=sigma):
+        #         # If so, compute the interval Choquet integral for that permutation
+        #         choquet_integ_sum += self.intvl_choquet_integ_permu(intvl_set, np.array(sigma))
+        #         n_admissible_permus += 1
+
+        return choquet_integ_sum / n_admissible_permus
+
+    def is_admissible_permu(self, intvl_set: np.ndarray, sigma: np.ndarray) -> bool:
+        """
+        Check if a permutation is admissible.
+        -
+        A permutation sigma is admissible if:
+        - for every `x_i < x_j | x_i,x_j ∈ intvl_set` , we have that `sigma^-1(i) < sigma^-1(j)`
+        - for each `x_i`, the set `{sigma^-1(j) | j ∈ {1,...,n} with x_i = x_j }` is an interval in `N` (natutal
+            numbers set).
+
+        Where `sigma^-1` is the inverse permutation, i.e., the function that maps each original index to the permutated one.
+
+        The order used between intervals is ass follows:
+            `x <= y if and only if x[0] <= y[0] and x[1] <= y[1]`
+        Which leads to:
+            `x < y if and only if x[0] < y[0] or x[0] == y[0] and x[1] < y[1]`
+
+            `x > y if and only if x[0] > y[0] or x[0] == y[0] and x[1] > y[1]`
+
+            `x == y if and only if x[0] == y[0] and x[1] == y[1]`
+
+        Important:
+        -
+        This implementation fails when `n_frec_ranges > 20000`
+
+        Parameters
+        ----------
+        - intvl_set : array-like of shape (n_frec_ranges, 2)
+            Set of intervals to be used in the Choquet integral.
+        - sigma : array-like of shape (n_frec_ranges,)
+            Current permutation of the set of intervals. Index i contains the index in the original vector of
+            the element that has been mapped to position i by the permutation.
+
+        Returns
+        -------
+        - is_admissible : bool
+            Whether the permutation is admissible or not
+        """
+        is_admissible = True
+
+        n = len(intvl_set)  # n_frec_ranges TODO: Create an instance attribute for n_frec_ranges
+        sigma_inv = np.argsort(sigma)
+
+        ###############################
+        # First condition
+        # Obtain all the index pairs of the upper-triangle and lower-triangle of an n x n matrix.
+        # k=1 or k=-1 allows to exclude the diagonal of the matrix (there is no need to check each elemento with itself).
+        # These are all the pair of indexes that should be check for the first condition of admissibility.
+        i, j = np.triu_indices(n, k=1)  # Start from 1 diagonal above the main diagonal
+        h, t = np.tril_indices(n, k=-1)  # Start from 1 diagonal below the main diagonal
+
+        first_ele_idx = np.concatenate((i, h))
+        second_ele_idx = np.concatenate((j, t))
+
+        # Get the pairs of intervals in which the first interval is smaller than the second one.
+        # Check the method docummentation for further information on how intervals are compared.
+        ele_check_mask = (intvl_set[first_ele_idx][:, 0] < intvl_set[second_ele_idx][:, 0]) | (
+            (intvl_set[first_ele_idx][:, 0] == intvl_set[second_ele_idx][:, 0])
+            & (intvl_set[first_ele_idx][:, 1] < intvl_set[second_ele_idx][:, 1])
+        )
+
+        # Get the actual indexes that have to be checked.
+        first_ele_idx = first_ele_idx[ele_check_mask]
+        second_ele_idx = second_ele_idx[ele_check_mask]
+
+        # Check if the condition for the inverse of the permutation holds for all the previous elements
+        is_admissible = np.all(sigma_inv[first_ele_idx] < sigma_inv[second_ele_idx])
+
+        ###############################
+        # Second condition
+        if is_admissible:
+            # For each interval, get the permutation inverse of the indexes of the intervals that are equal to it
+            for intvl in intvl_set:
+                equal_list = sigma_inv[
+                    np.where(np.logical_and(intvl_set[:, 0] == intvl[0], intvl_set[:, 1] == intvl[1]))[0]
+                ]
+
+                # It is only admissible if all the elements are consecutive
+                is_admissible = np.all(np.diff(equal_list) == 1)
+
+                if not is_admissible:
+                    break
+
+            # ###############################
+            # # Second condition (alternative using numpy - it is actually slower)
+            # # Boolean mask of dim n_frec_ranges x n_frec_ranges
+            # # The element (i,j) is True if the interval i of the invtl_set is equal to the interval j
+            # logic_mat = (intvl_set[:, 0, np.newaxis] == intvl_set[:, 0]) & (
+            #     intvl_set[:, 1, np.newaxis] == intvl_set[:, 1]
+            # )
+            # # logic_mat = np.logical_and(
+            # #     np.expand_dims(intvl_set[:, 0], axis=1) == intvl_set[:, 0],
+            # #     np.expand_dims(intvl_set[:, 1], axis=1) == intvl_set[:, 1],
+            # # )
+
+            # # Map the sigma permutation to each of the columns of the logic matrix. If the the permutation is
+            # #   admissible, the True values of each column should be consecutive.
+            # logic_mat_sigma = logic_mat[sigma_inv, :]
+
+            # # Get the difference between consecutive rows of each column of the logic matrix
+            # diff = np.diff(logic_mat_sigma.astype(np.int8), axis=0)
+
+            # # Find the index of the first occurrence of -1
+            # index_of_minus_1 = np.argmax(np.vstack((diff, -np.ones(diff.shape[1], dtype=np.int8))) == -1, axis=0)
+            # # index_of_minus_1 = np.argmax(diff == -1, axis=0)
+
+            # # Generate a matrix with each row index in each column
+            # row_index_matrix = np.zeros(diff.shape) + np.arange(diff.shape[0], dtype=np.int32)[:, np.newaxis]
+
+            # # Get the elements of the matrix whose row index in the corresponding column is greater
+            # #   than the index of the first -1. Check if there are any 1s in that subset.
+            # is_admissible = not np.any(diff[row_index_matrix > index_of_minus_1] == 1)
+
+        return is_admissible
+
+    def intvl_choquet_integ_permu(self, intvl_set: np.ndarray, sigma: np.ndarray) -> np.ndarray:
         """
         Interval Choquet integral given a specific permutation.
 
         Parameters
         ----------
-        - intvl_set : array-like of shape (n_frec_ranges,)
+        - intvl_set : array-like of shape (n_frec_ranges,2)
             Set of intervals to be used in the Choquet integral.
-        - permu_idxs : array-like of shape (n_frec_ranges,)
-            Current permutation of the set of intervals.
+        - sigma : array-like of shape (n_frec_ranges,)
+            Current permutation of the set of intervals. Index i contains the index in the original vector of
+            the element that has been mapped to position i by the permutation.
 
         Returns
         -------
@@ -220,8 +409,8 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
 
         # Obtain the array of fuzzy measure differences that multiplies each interval in the summatory
         fuzzy_measure_diff = (
-            self.fuzzy_measure[n - np.arange(len(permu_idxs))] - self.fuzzy_measure[n - np.arange(len(permu_idxs)) - 1]
+            self.fuzzy_measure[n - np.arange(len(sigma))] - self.fuzzy_measure[n - np.arange(len(sigma)) - 1]
         )
 
         # Multiply each fuzzy measure difference by the corresponding interval and compute the sumatory of resulting intervals
-        return np.sum((intvl_set[permu_idxs].transpose() * fuzzy_measure_diff).transpose(), axis=0)
+        return np.sum((intvl_set[sigma].transpose() * fuzzy_measure_diff).transpose(), axis=0)
