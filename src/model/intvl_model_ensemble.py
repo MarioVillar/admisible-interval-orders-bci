@@ -24,11 +24,14 @@ class IntvlModelEnsemble(VotingClassifier):
 
         Returns
         -------
-        p : array-like of shape (n_classes, n_samples, 2)
+        p : array-like of shape (n_samples, n_classes, 2)
             The class probabilities of the input samples. Classes are ordered by lexicographic order.
         """
         check_is_fitted(self)
 
-        proba_list = np.asarray([clf.predict_proba(X) for clf in self.estimators_])
+        # Return shape: (n_models, n_samples, n_classes)
+        proba_list = self._collect_probas(X)
+        # proba_list = np.asarray([clf.predict_proba(X) for clf in self.estimators_])
 
-        return np.array([np.min(proba_list, axis=0), np.max(proba_list, axis=0)])
+        return np.stack((np.min(proba_list, axis=0), np.max(proba_list, axis=0)), axis=2)
+        # return np.array([np.min(proba_list, axis=0), np.max(proba_list, axis=0)])

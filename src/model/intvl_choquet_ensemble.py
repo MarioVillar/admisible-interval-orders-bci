@@ -19,6 +19,9 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
     def __validate_params(self):
         assert len(self.ind_ensembles) > 0, "There should be at least one individual ensemble"
 
+        self._estimator_type = "regressor"
+        self.fuzzy_measure = self.card_fuzzy_measure(len(self.ind_ensembles))
+
     def __init__(
         self, ind_ensembles: list = [], n_jobs: int = -1, _estimator_type: Any = None, fuzzy_measure: Any = None
     ) -> None:
@@ -36,8 +39,8 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         """
         self.ind_ensembles = ind_ensembles
         self.n_jobs = n_jobs
-        self._estimator_type = "regressor"
-        self.fuzzy_measure = self.card_fuzzy_measure(len(self.ind_ensembles))
+        self._estimator_type = _estimator_type
+        self.fuzzy_measure = fuzzy_measure
 
     @classmethod
     def create_ensemble(
@@ -171,13 +174,22 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             return ensemble.predict_proba(x)
 
         # Run in parallel mode
-        y = Parallel(n_jobs=self.n_jobs)(
-            delayed(predict_proba_ind_ensemble)(x, ensemble) for x, ensemble in zip(X, self.ind_ensembles)
+        # Return shape: (n_samples, n_classes, n_frec_ranges, 2)
+        y = np.stack(
+            Parallel(n_jobs=self.n_jobs)(
+                delayed(predict_proba_ind_ensemble)(x, ensemble) for x, ensemble in zip(X, self.ind_ensembles)
+            ),
+            axis=2,
         )
 
-        # This should be done by Interval Choquet Integral
-        y = np.mean(np.array(y), axis=1)
-        y = np.mean(np.array(y), axis=0)
+        # Flatten the array in order to apply the interval Choquet integral to each sample and each class prediction
+        y_flattened = y.reshape((-1, y.shape[2], y.shape[3]))
+
+        # Run in parallel mode
+        # The output is reshaped to the original shape but the dimension of each model (which each agreggated by the choquet integral)
+        y = np.array(
+            Parallel(n_jobs=self.n_jobs)(delayed(self.intvl_choquet_integ)(intvl_set) for intvl_set in y_flattened),
+        ).reshape((y.shape[0], y.shape[1], y.shape[3]))
 
         return y
 
@@ -250,6 +262,8 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
                 return [[1, 1], self.intvl_choquet_integ_permu(intvl_set, np.array(sigma))]
             else:
                 return [[0, 0], [0, 0]]
+
+        print("Another one")
 
         orig_indexes = np.arange(len(intvl_set))
 
