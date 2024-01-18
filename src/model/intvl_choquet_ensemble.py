@@ -18,18 +18,26 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
 
     def __validate_params(self):
         assert len(self.ind_ensembles) > 0, "There should be at least one individual ensemble"
+        assert 0 <= self.alpha <= 1, "Alpha should be between 0 and 1"
 
         self._estimator_type = "regressor"
         self.fuzzy_measure = self.card_fuzzy_measure(len(self.ind_ensembles))
 
     def __init__(
-        self, ind_ensembles: list = [], n_jobs: int = -1, _estimator_type: Any = None, fuzzy_measure: Any = None
+        self,
+        ind_ensembles: list = [],
+        alpha: float = 1,
+        n_jobs: int = -1,
+        _estimator_type: Any = None,
+        fuzzy_measure: Any = None,
     ) -> None:
         """
         Parameters
         ----------
         - ind_ensembles : list
             List of IntvlModelEnsemble objects.
+        - alpha : float
+            The weight used in the K-alpha mapping of the intervals in order to compare them.
         - n_jobs : int
             Number of jobs to run in parallel.
         - _estimator_type : str
@@ -38,6 +46,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             Not used. Only for scikit-learn compatibility purposes (so it gest added to get_params() method).
         """
         self.ind_ensembles = ind_ensembles
+        self.alpha = alpha
         self.n_jobs = n_jobs
         self._estimator_type = _estimator_type
         self.fuzzy_measure = fuzzy_measure
@@ -50,6 +59,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         n_frec_ranges: int,
         model_class_kwargs: list = None,
         ind_model_ens_kwargs: dict = {},
+        alpha: float = 1,
         n_jobs: int = -1,
     ):
         """
@@ -67,6 +77,8 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             List of dictionaries containing the key arguments for each model type class.
         - ind_model_ens_kwargs : dict
             Key arguments for each individual ensemble.
+        - alpha : float
+            The weight used in the K-alpha mapping of the intervals in order to compare them.
         - n_jobs : int
             Number of jobs to run in parallel.
 
@@ -100,7 +112,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             # Create and store a new individual ensemble
             ind_ensembles.append(IntvlModelEnsemble(estimators=ind_estimators, **ind_model_ens_kwargs))
 
-        return cls(ind_ensembles=ind_ensembles, n_jobs=n_jobs)
+        return cls(ind_ensembles=ind_ensembles, alpha=alpha, n_jobs=n_jobs)
 
     def fit(self, X: np.array, y: np.array = None):
         """
@@ -150,8 +162,11 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         """
         class_probs = self.predict_proba(X)
 
-        # This should be done by using a K-lambda mapping
-        return np.argmax(class_probs, axis=1)
+        # Apply the K-alpha mapping to each interval prediction. It multiplies the infimum by 1-alpha and the supremum by alpha.
+        alpha_mapping = np.dot(class_probs[:, :, :], [1 - self.alpha, self.alpha])
+
+        # Return the class with the highest K-alpha mapped interval
+        return np.argmax(alpha_mapping, axis=1)
 
     def predict_proba(self, X: np.array) -> np.array:
         """
@@ -164,7 +179,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
 
         Returns
         -------
-        - y : array-like of shape (n_frec_ranges, n_classes, n_samples, 2)
+        - y : array-like of shape (n_samples, n_classes, 2)
             Class probabilities of the input samples.
         """
         self.__validate_params()
