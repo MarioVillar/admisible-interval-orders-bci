@@ -263,8 +263,6 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             else:
                 return [[0, 0], [0, 0]]
 
-        print("Another one")
-
         orig_indexes = np.arange(len(intvl_set))
 
         # Obtain all permutations
@@ -278,13 +276,6 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         # Compute the sum of interval Choquet integrals and count the number of admissible permutations
         n_admissible_permus = np.sum(results[:, 0, 0])
         choquet_integ_sum = np.sum(results[:, 1], axis=0)
-
-        # for sigma in sigma_list:
-        #     # Check if the permutation is admissible
-        #     if self.is_admissible_permu(intvl_set=intvl_set, sigma=sigma):
-        #         # If so, compute the interval Choquet integral for that permutation
-        #         choquet_integ_sum += self.intvl_choquet_integ_permu(intvl_set, np.array(sigma))
-        #         n_admissible_permus += 1
 
         return choquet_integ_sum / n_admissible_permus
 
@@ -369,36 +360,6 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
 
                 if not is_admissible:
                     break
-
-            # ###############################
-            # # Second condition (alternative using numpy - it is actually slower)
-            # # Boolean mask of dim n_frec_ranges x n_frec_ranges
-            # # The element (i,j) is True if the interval i of the invtl_set is equal to the interval j
-            # logic_mat = (intvl_set[:, 0, np.newaxis] == intvl_set[:, 0]) & (
-            #     intvl_set[:, 1, np.newaxis] == intvl_set[:, 1]
-            # )
-            # # logic_mat = np.logical_and(
-            # #     np.expand_dims(intvl_set[:, 0], axis=1) == intvl_set[:, 0],
-            # #     np.expand_dims(intvl_set[:, 1], axis=1) == intvl_set[:, 1],
-            # # )
-
-            # # Map the sigma permutation to each of the columns of the logic matrix. If the the permutation is
-            # #   admissible, the True values of each column should be consecutive.
-            # logic_mat_sigma = logic_mat[sigma_inv, :]
-
-            # # Get the difference between consecutive rows of each column of the logic matrix
-            # diff = np.diff(logic_mat_sigma.astype(np.int8), axis=0)
-
-            # # Find the index of the first occurrence of -1
-            # index_of_minus_1 = np.argmax(np.vstack((diff, -np.ones(diff.shape[1], dtype=np.int8))) == -1, axis=0)
-            # # index_of_minus_1 = np.argmax(diff == -1, axis=0)
-
-            # # Generate a matrix with each row index in each column
-            # row_index_matrix = np.zeros(diff.shape) + np.arange(diff.shape[0], dtype=np.int32)[:, np.newaxis]
-
-            # # Get the elements of the matrix whose row index in the corresponding column is greater
-            # #   than the index of the first -1. Check if there are any 1s in that subset.
-            # is_admissible = not np.any(diff[row_index_matrix > index_of_minus_1] == 1)
 
         return is_admissible
 
