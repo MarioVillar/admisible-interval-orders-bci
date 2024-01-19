@@ -33,7 +33,7 @@ warnings.filterwarnings("ignore")
 # Initializing Datasets
 
 dataset = BNCI2014_004()
-dataset.subject_list = [1]
+# dataset.subject_list = [1]
 
 
 ##############################################################################
