@@ -33,7 +33,7 @@ warnings.filterwarnings("ignore")
 # Initializing Datasets
 
 dataset = BNCI2014_004()
-# dataset.subject_list = [1]
+dataset.subject_list = [1]
 
 
 ##############################################################################
@@ -89,19 +89,18 @@ if constants.SAVE_TO_DISK:
 
 ##############################################################################
 # Plotting Results
-# ----------------
-# results["subj"] = [str(resi).zfill(2) for resi in results["subject"]]
+results["subj"] = [str(resi).zfill(2) for resi in results["subject"]]
 
-# g = sns.catplot(
-#     kind="bar",
-#     x="score",
-#     y="subj",
-#     hue="pipeline",
-#     col="dataset",
-#     height=12,
-#     aspect=0.5,
-#     data=results,
-#     orient="h",
-#     palette="viridis",
-# )
-# plt.show()
+g = sns.catplot(
+    kind="bar",
+    x="score",
+    y="subj",
+    hue="pipeline",
+    col="dataset",
+    height=12,
+    aspect=0.5,
+    data=results,
+    orient="h",
+    palette="viridis",
+)
+plt.show()

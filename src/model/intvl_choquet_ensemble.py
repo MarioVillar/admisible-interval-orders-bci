@@ -21,15 +21,21 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         assert 0 <= self.alpha <= 1, "Alpha should be between 0 and 1"
 
         self._estimator_type = "regressor"
-        self.fuzzy_measure = self.card_fuzzy_measure(len(self.ind_ensembles))
+        self.fuzzy_measure = self.card_fuzzy_measure()
+        self.n_frec_ranges = len(self.ind_ensembles)
+
+        self.validated_params = True
 
     def __init__(
         self,
         ind_ensembles: list = [],
         alpha: float = 1,
+        p: float = 2,
         n_jobs: int = -1,
         _estimator_type: Any = None,
         fuzzy_measure: Any = None,
+        n_frec_ranges: int = -1,
+        validated_params: bool = False,
     ) -> None:
         """
         Parameters
@@ -38,18 +44,29 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             List of IntvlModelEnsemble objects.
         - alpha : float
             The weight used in the K-alpha mapping of the intervals in order to compare them.
+        - p : float
+            Exponent to which the expression of the fuzzy_measure is raised.
         - n_jobs : int
             Number of jobs to run in parallel.
         - _estimator_type : str
             Not used. Only for scikit-learn compatibility purposes (so it gest added to get_params() method).
         - fuzzy_measure : array-like of shape (N,)
             Not used. Only for scikit-learn compatibility purposes (so it gest added to get_params() method).
+        - n_frec_ranges : int
+            Number of frecuency band ranges. Used to determine the number of individual ensembles created.
+                Not used. Only for scikit-learn compatibility purposes (so it gest added to get_params() method).
+        - validated_params : bool
+            Whether the parameters have been validated or not. If not, they are validated before fittingNot used.
+                Only for scikit-learn compatibility purposes (so it gest added to get_params() method).
         """
         self.ind_ensembles = ind_ensembles
         self.alpha = alpha
+        self.p = p
         self.n_jobs = n_jobs
         self._estimator_type = _estimator_type
         self.fuzzy_measure = fuzzy_measure
+        self.n_frec_ranges = n_frec_ranges
+        self.validated_params = validated_params
 
     @classmethod
     def create_ensemble(
@@ -59,6 +76,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         n_frec_ranges: int,
         model_class_kwargs: list = None,
         ind_model_ens_kwargs: dict = {},
+        p: float = 2,
         alpha: float = 1,
         n_jobs: int = -1,
     ):
@@ -77,6 +95,8 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             List of dictionaries containing the key arguments for each model type class.
         - ind_model_ens_kwargs : dict
             Key arguments for each individual ensemble.
+        - p : float
+            Exponent to which the expression of the fuzzy_measure is raised.
         - alpha : float
             The weight used in the K-alpha mapping of the intervals in order to compare them.
         - n_jobs : int
@@ -112,7 +132,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             # Create and store a new individual ensemble
             ind_ensembles.append(IntvlModelEnsemble(estimators=ind_estimators, **ind_model_ens_kwargs))
 
-        return cls(ind_ensembles=ind_ensembles, alpha=alpha, n_jobs=n_jobs)
+        return cls(ind_ensembles=ind_ensembles, p=p, alpha=alpha, n_jobs=n_jobs)
 
     def fit(self, X: np.array, y: np.array = None):
         """
@@ -208,25 +228,18 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
 
         return y
 
-    def card_fuzzy_measure(self, N: int, p: float = 1) -> np.ndarray:
+    def card_fuzzy_measure(self) -> np.ndarray:
         """
         Fuzzy measure based on the cardinality of a set.
         -
         Calculate the cardinality fuzzy measure of each subset of a set with size N.
 
-        Parameters
-        ----------
-        - N : int
-            Cardinality of the set.
-        - p : float
-            Exponent to which the expression is raised.
-
         Returns
         -------
-        - fuzzy_measure : array-like of shape (N+1,)
+        - fuzzy_measure : array-like of shape (n_frec_ranges+1,)
             Value of the fuzzy measure of each subset of the set (including the empty set).
         """
-        return np.array([(x / N) ** p for x in np.arange(0, N + 1)])
+        return np.array([(x / self.n_frec_ranges) ** self.p for x in np.arange(0, self.n_frec_ranges + 1)])
 
     def intvl_choquet_integ(self, intvl_set: np.ndarray) -> np.ndarray:
         """
@@ -278,7 +291,7 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
             else:
                 return [[0, 0], [0, 0]]
 
-        orig_indexes = np.arange(len(intvl_set))
+        orig_indexes = np.arange(self.n_frec_ranges)
 
         # Obtain all permutations
         sigma_list = permutations(orig_indexes)
@@ -333,7 +346,6 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         """
         is_admissible = True
 
-        n = len(intvl_set)  # n_frec_ranges TODO: Create an instance attribute for n_frec_ranges
         sigma_inv = np.argsort(sigma)
 
         ###############################
@@ -341,8 +353,8 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         # Obtain all the index pairs of the upper-triangle and lower-triangle of an n x n matrix.
         # k=1 or k=-1 allows to exclude the diagonal of the matrix (there is no need to check each elemento with itself).
         # These are all the pair of indexes that should be check for the first condition of admissibility.
-        i, j = np.triu_indices(n, k=1)  # Start from 1 diagonal above the main diagonal
-        h, t = np.tril_indices(n, k=-1)  # Start from 1 diagonal below the main diagonal
+        i, j = np.triu_indices(self.n_frec_ranges, k=1)  # Start from 1 diagonal above the main diagonal
+        h, t = np.tril_indices(self.n_frec_ranges, k=-1)  # Start from 1 diagonal below the main diagonal
 
         first_ele_idx = np.concatenate((i, h))
         second_ele_idx = np.concatenate((j, t))
@@ -395,11 +407,10 @@ class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
         - intvl_choquet_integ : array-like of shape (2,)
             Resulting interval obtained by the Choquet integral.
         """
-        n = len(intvl_set)  # n_frec_ranges
-
         # Obtain the array of fuzzy measure differences that multiplies each interval in the summatory
         fuzzy_measure_diff = (
-            self.fuzzy_measure[n - np.arange(len(sigma))] - self.fuzzy_measure[n - np.arange(len(sigma)) - 1]
+            self.fuzzy_measure[self.n_frec_ranges - np.arange(len(sigma))]
+            - self.fuzzy_measure[self.n_frec_ranges - np.arange(len(sigma)) - 1]
         )
 
         # Multiply each fuzzy measure difference by the corresponding interval and compute the sumatory of resulting intervals
