@@ -78,7 +78,10 @@ class CSPEnsemble(BaseEstimator, TransformerMixin):
 
         # Defined for parallelization purposes
         def fit_csp(series):
-            return CSP(n_components=self.n_components, **self.kwargs).fit(series, y)
+            # return CSP(n_components=self.n_components, **self.kwargs).fit(series, y)
+            return CSP(n_components=self.n_components, reg=None, log=True, norm_trace=False, **self.kwargs).fit(
+                series, y
+            )
 
         # Run in parallel mode
         self.csp_list = Parallel(n_jobs=self.n_jobs)(delayed(fit_csp)(series) for series in X)

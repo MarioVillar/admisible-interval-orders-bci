@@ -1,9 +1,20 @@
-# Table of contents
+# Choquet Interval Ensemble for Motor Imager
 
-- [Table of contents](#table-of-contents)
-  - [Commits guide](#commits-guide)
+The proposed prediction pipeline is the following:
 
-## Commits guide
+![Prediction pipeline](/prediction_pipeline.png)
+
+The intervalar Choquet integral is applied as follows:
+
+![Intervalar Choquet integral](/int_choquet_integ.png)
+
+## Table of contents
+
+- [Choquet Interval Ensemble for Motor Imager](#choquet-interval-ensemble-for-motor-imager)
+  - [Table of contents](#table-of-contents)
+- [Commits guide](#commits-guide)
+
+# Commits guide
 
 ```
 ♻️ [Change functionality] ♻️

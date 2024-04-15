@@ -9,11 +9,16 @@ from .intvl_model_ensemble import IntvlModelEnsemble
 
 class IntvlChoquetEnsemble(BaseEstimator, ClassifierMixin):
     """
-    Model ensemble of each frecuency band range.
+    Choquet Integral model ensemble of each frecuency band range.
     -
 
     A IntvlModelEnsemble is used on each frecuency band range. The model types comprising each individual
-    ensemble are the same.
+    ensemble are the same. Then, the predictions of each frequency range and class are integrated in the
+    following way:
+    1. For each class, obtain the interval Choquet integral of the predicted intervals of each of the
+        frecuency band ranges.
+    2. For each class, compute the K-alpha mapping of the interval obtained in the previous step.
+    3. The class with the highest K-alpha value is the winning class.
     """
 
     def __validate_params(self):
