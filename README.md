@@ -17,7 +17,7 @@ The intervalar Choquet integral is applied as follows:
 # Commits guide
 
 ```
-♻️ [Change functionality] ♻️
+♻️ [Refactor code] ♻️
 ⚡️ [Improve code] ⚡️
 🐛 [Fix bug] 🐛
 🩹 [Fix non critical bug] 🩹

@@ -230,7 +230,7 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
 
         Returns
         -------
-        - y : array-like of shape (n_samples, n_classes, 2)
+        - y : array-like of shape (n_samples, n_classes, n_frec_ranges, 2)
             Class probabilities of the input samples.
         """
         self.__validate_params()

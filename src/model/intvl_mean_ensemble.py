@@ -5,7 +5,8 @@ from .intvl_ensemble_block import IntvlEnsembleBlock
 
 class IntvlMeanEnsemble(IntvlEnsembleBlock):
     """
-    Mean interval model ensemble of each frecuency band range.
+    Block of model ensembles for each frecuency band range, where the model ensembles
+    aggregation is done by the mean function.
     -
 
     A IntvlModelEnsemble is used on each frecuency band range. The model types comprising each individual
