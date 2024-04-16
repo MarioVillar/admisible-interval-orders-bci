@@ -20,7 +20,7 @@ from mne.decoding import CSP
 from mne.io import concatenate_raws, read_raw_edf
 
 
-import constants
+import config
 from preprocessing.band_pass_filters import BandPassFilterEnsemble
 from preprocessing.csp_ensemble import CSPEnsemble
 from model.intvl_choquet_ensemble import IntvlChoquetEnsemble
@@ -83,25 +83,25 @@ cv_split = cv.split(epochs_data_train)
 sfreq = raw.info["sfreq"]
 
 # Create band-pass filters ensemble
-bpfe = BandPassFilterEnsemble(frec_ranges=constants.FREQ_BANDS_RANGES, sfreq=sfreq)
+bpfe = BandPassFilterEnsemble(frec_ranges=config.FREQ_BANDS_RANGES, sfreq=sfreq)
 
 # Create CSP ensemble
-cspe = CSPEnsemble(n_components=constants.CSP_COMPONENTS, n_frec_ranges=len(constants.FREQ_BANDS_RANGES))
+cspe = CSPEnsemble(n_components=config.CSP_COMPONENTS, n_frec_ranges=len(config.FREQ_BANDS_RANGES))
 
 # Create the model ensemble
 mdes = IntvlChoquetEnsemble.create_ensemble(
-    model_class_list=constants.MODEL_TYPES_LIST,
-    model_class_names=constants.MODEL_CLASS_NAMES,
-    n_frec_ranges=len(constants.FREQ_BANDS_RANGES),
-    model_class_kwargs=constants.MODEL_CLASS_KWARGS,
-    alpha=constants.K_ALPHA,
+    model_class_list=config.MODEL_TYPES_LIST,
+    model_class_names=config.MODEL_CLASS_NAMES,
+    n_frec_ranges=len(config.FREQ_BANDS_RANGES),
+    model_class_kwargs=config.MODEL_CLASS_KWARGS,
+    alpha=config.K_ALPHA,
 )
 
 # mdes = IntvlMeanEnsemble.create_ensemble(
-#     model_class_list=constants.MODEL_TYPES_LIST,
-#     model_class_names=constants.MODEL_CLASS_NAMES,
-#     n_frec_ranges=len(constants.FREQ_BANDS_RANGES),
-#     model_class_kwargs=constants.MODEL_CLASS_KWARGS,
+#     model_class_list=config.MODEL_TYPES_LIST,
+#     model_class_names=config.MODEL_CLASS_NAMES,
+#     n_frec_ranges=len(config.FREQ_BANDS_RANGES),
+#     model_class_kwargs=config.MODEL_CLASS_KWARGS,
 # )
 
 clf = make_pipeline(bpfe, cspe, mdes)

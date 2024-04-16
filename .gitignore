@@ -1,6 +1,7 @@
 testMain.py
 *.pkl
 localDB
+.env
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
