@@ -21,7 +21,7 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         assert len(self.ind_ensembles) > 0, "There should be at least one individual ensemble"
         assert 0 <= self.alpha <= 1, "Alpha should be between 0 and 1"
 
-        self._estimator_type = "regressor"
+        self._estimator_type = "classifier"
         self.n_frec_ranges = len(self.ind_ensembles)
         self.fuzzy_measure = self.card_fuzzy_measure()
 
@@ -168,6 +168,8 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
             The fitted instance.
         """
         self.__validate_params()
+
+        self.classes_, y = np.unique(y, return_inverse=True)
 
         # Defined for parallelization purposes
         def fit_ind_ensemble(x: np.array, ensemble: IntvlModelEnsemble):

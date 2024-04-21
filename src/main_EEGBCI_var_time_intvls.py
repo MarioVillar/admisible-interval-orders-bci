@@ -166,7 +166,7 @@ w_start = np.arange(0, epochs_data.shape[2] - w_length, w_step)
 def score_clf(clf):
     scores_windows = []
 
-    cv = ShuffleSplit(10, test_size=0.2, random_state=42)
+    cv = ShuffleSplit(5, test_size=0.2, random_state=config.SEED)
     cv_split = cv.split(epochs_data_train)
 
     for train_idx, test_idx in cv_split:
