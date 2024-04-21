@@ -1,10 +1,15 @@
+import os
 import warnings
 import mne
+import pandas as pd
 from sklearn.pipeline import make_pipeline
 import moabb
 from moabb.datasets import BNCI2014_001
 from moabb.evaluations import WithinSessionEvaluation
 from moabb.paradigms import LeftRightImagery
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.pipeline import Pipeline
+from mne.decoding import CSP
 
 import config
 from utils.disk import save_results_csv
@@ -16,9 +21,14 @@ from model.intvl_choquet_ensemble import IntvlChoquetEnsemble
 from model.intvl_mean_ensemble import IntvlMeanEnsemble
 from model.intvl_sugeno_ensemble import IntvlSugenoEnsemble
 
+from evaluation.grid_param_search import get_best_params
 
+from visualization.plot_results import bar_plot_by_subject
+
+
+#############################################################################
 mne.set_log_level("CRITICAL")
-moabb.set_log_level("info")
+moabb.set_log_level("ERROR")
 warnings.filterwarnings("ignore")
 
 
@@ -28,6 +38,12 @@ warnings.filterwarnings("ignore")
 dataset = BNCI2014_001()
 # dataset.subject_list = [1]
 
+
+##############################################################################
+# Get the best parameters from the grid search
+best_params = get_best_params(pd.read_csv(f"{config.DISK_PATH}/{os.getenv('BNCI2014_001_GS_RESULTS')}"))
+
+
 ##############################################################################
 # Create band-pass filters ensemble
 
@@ -35,45 +51,59 @@ dataset = BNCI2014_001()
 subject_data = dataset.get_data(subjects=[1])
 sfreq = subject_data[1][list(subject_data[1].keys())[0]]["0"].info["sfreq"]
 
-bpfe_mean = BandPassFilterEnsemble(frec_ranges=config.FREQ_BANDS_RANGES, sfreq=sfreq)
-bpfe_choquet = BandPassFilterEnsemble(frec_ranges=config.FREQ_BANDS_RANGES, sfreq=sfreq)
-bpfe_sugeno = BandPassFilterEnsemble(frec_ranges=config.FREQ_BANDS_RANGES, sfreq=sfreq)
+bpfe_mean = BandPassFilterEnsemble(frec_ranges=best_params["IntvlMeanEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
+bpfe_choquet = BandPassFilterEnsemble(frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
+bpfe_sugeno = BandPassFilterEnsemble(frec_ranges=best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
 
 
 ##############################################################################
 # Create CSP ensemble
-cspe_mean = CSPEnsemble(n_components=config.CSP_COMPONENTS, n_frec_ranges=len(config.FREQ_BANDS_RANGES))
-cspe_choquet = CSPEnsemble(n_components=config.CSP_COMPONENTS, n_frec_ranges=len(config.FREQ_BANDS_RANGES))
-cspe_sugeno = CSPEnsemble(n_components=config.CSP_COMPONENTS, n_frec_ranges=len(config.FREQ_BANDS_RANGES))
+cspe_mean = CSPEnsemble(
+    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"])
+)
+cspe_choquet = CSPEnsemble(
+    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"])
+)
+cspe_sugeno = CSPEnsemble(
+    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"])
+)
 
 
 ##############################################################################
 # Create Model Ensembles Block
 
+
 # Create the model ensembles block
 clf_mean = IntvlMeanEnsemble.create_ensemble(
     model_class_list=config.MODEL_TYPES_LIST,
     model_class_names=config.MODEL_CLASS_NAMES,
-    n_frec_ranges=len(config.FREQ_BANDS_RANGES),
-    model_class_kwargs=config.MODEL_CLASS_KWARGS,
+    n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"]),
+    model_class_kwargs=best_params["IntvlMeanEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
 )
 
 clf_choquet = IntvlChoquetEnsemble.create_ensemble(
     model_class_list=config.MODEL_TYPES_LIST,
     model_class_names=config.MODEL_CLASS_NAMES,
-    n_frec_ranges=len(config.FREQ_BANDS_RANGES),
-    model_class_kwargs=config.MODEL_CLASS_KWARGS,
+    n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
+    model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
 )
 
 clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
     model_class_list=config.MODEL_TYPES_LIST,
     model_class_names=config.MODEL_CLASS_NAMES,
-    n_frec_ranges=len(config.FREQ_BANDS_RANGES),
-    model_class_kwargs=config.MODEL_CLASS_KWARGS,
+    n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
+    model_class_kwargs=best_params["IntvlSugenoEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
 )
+
+##############################################################################
+# Create simple model
+
+lda = LinearDiscriminantAnalysis()
+csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+clf_ind = Pipeline([("CSP", csp), ("LDA", lda)])
 
 
 ##############################################################################
@@ -104,31 +134,37 @@ results = evaluation.process(
         "IntvlMeanEnsemble": pipeline_mean,
         "IntvlChoquetEnsemble": pipeline_choquet,
         "IntvlSugenoEnsemble": pipeline_sugeno,
+        "CSP-LDA": clf_ind,
     }
 )
+
+
+param_comb_list = []
+freq_bands_ranges_list = []
+
+for i in range(len(results)):
+    pipeline = results.loc[i, "pipeline"]
+
+    if pipeline == "CSP-LDA":
+        param_comb_list.append({})
+        freq_bands_ranges_list.append([])
+    else:
+        param_comb_list.append(best_params[pipeline]["param_comb"])
+        freq_bands_ranges_list.append(best_params[pipeline]["freq_bands_ranges"])
+
+results["param_comb"] = param_comb_list
+results["freq_bands_ranges"] = freq_bands_ranges_list
 
 
 ##############################################################################
 # Save results to disk
 
 if config.SAVE_TO_DISK:
-    save_results_csv(results, f"{config.DISK_PATH}/results.csv", overwrite=True)
+    save_results_csv(results, f"{config.DISK_PATH}/{os.getenv('BNCI2014_001_MAIN_RESULTS')}", overwrite=False)
 
 
-# ##############################################################################
-# # Plotting Results
+##############################################################################
+# Plotting Results
 # results["subj"] = [str(resi).zfill(2) for resi in results["subject"]]
 
-# g = sns.catplot(
-#     kind="bar",
-#     x="score",
-#     y="subj",
-#     hue="pipeline",
-#     col="dataset",
-#     height=12,
-#     aspect=0.5,
-#     data=results,
-#     orient="h",
-#     palette="viridis",
-# )
-# plt.show()
+bar_plot_by_subject(results=results, save_to_disk=config.SAVE_TO_DISK, img_name="roc_auc_5_fold_BNCI2014_001")

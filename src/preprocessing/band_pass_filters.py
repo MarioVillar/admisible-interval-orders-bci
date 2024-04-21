@@ -33,7 +33,7 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
                 frec_range[0] < frec_range[1]
             ), "The lower bound must be lower than the upper bound (as it is a band-pass filter)"
 
-    def __init__(self, frec_ranges: list[list[float]] = [], sfreq: float = 1.0) -> None:
+    def __init__(self, frec_ranges: list[list[float]] = [], sfreq: float = 1.0, n_jobs: int = -1) -> None:
         """
         Parameters
         ----------
@@ -43,9 +43,12 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
                 in the corresponding band-pass filter.
         sfreq
             The sample frequency of the data. By default, 1.0.
+        n_jobs : int
+            Number of jobs to run in parallel.
         """
         self.frec_ranges = frec_ranges
         self.sfreq = sfreq
+        self.n_jobs = n_jobs
 
     def fit(self, X: np.array, y: np.array = None):
         """
@@ -91,7 +94,7 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
         self.__validate_params()
 
         X_transformed = [
-            filter_data(X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1])
+            filter_data(X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1], n_jobs=self.n_jobs)
             for frec_range in self.frec_ranges
         ]
 
