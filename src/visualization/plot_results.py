@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -6,7 +7,9 @@ import config
 from utils.disk import check_create_folder
 
 
-def bar_plot_by_subject(results: pd.DataFrame, save_to_disk: bool = False, img_name: str = None):
+def bar_plot_by_subject(
+    results: pd.DataFrame, plot_csp_lda: bool = False, save_to_disk: bool = False, img_name: str = None
+):
     """
     Plot the ROC AUC results by subject and model in a bar plot.
     Plots only test results.
@@ -25,6 +28,9 @@ def bar_plot_by_subject(results: pd.DataFrame, save_to_disk: bool = False, img_n
     go.Figure
         The plotly figure.
     """
+    if not plot_csp_lda:
+        results = results[results["pipeline"] != "CSP-LDA"]
+
     # Filter test results
     test_results = results[results["session"].str.contains("test")]
 
@@ -98,16 +104,14 @@ def bar_plot_by_subject(results: pd.DataFrame, save_to_disk: bool = False, img_n
     return fig
 
 
-def line_plot_by_time_intvl(w_times: pd.DataFrame, scores_windows, save_to_disk: bool = False, img_name: str = None):
+def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, img_name: str = None):
     """
     Plot the classification accuracy over time intervals.
 
     Parameters
     ----------
-    w_times : pd.DataFrame
-        The time intervals.
-    scores_windows : np.ndarray
-        The classification accuracy scores.
+    results : pd.DataFrame
+        The results dataframe.
     save_to_disk : bool, optional
         Whether to save the plot to disk, by default False
     img_name : str, optional
@@ -118,12 +122,42 @@ def line_plot_by_time_intvl(w_times: pd.DataFrame, scores_windows, save_to_disk:
     go.Figure
         The plotly figure.
     """
-    mean_scores = np.mean(scores_windows, 0)
 
     fig = go.Figure()
 
-    # Add score line
-    fig.add_trace(go.Scatter(x=w_times, y=mean_scores, mode="lines", name="Score", line_color="#074173", line_width=3))
+    legend_names = {
+        "IntvlMeanEnsemble": "Aggregation by mean",
+        "IntvlChoquetEnsemble": "Aggregation by Choquet Integral",
+        "IntvlSugenoEnsemble": "Aggregation by Sugeno Integral",
+        "CSP-LDA": "CSP + LDA",
+    }
+
+    colors = {
+        "IntvlMeanEnsemble": "#A4CE95",
+        "IntvlChoquetEnsemble": "#5F5D9C",
+        "IntvlSugenoEnsemble": "#6196A6",
+        "CSP-LDA": "#F7DCB9",
+    }
+
+    # For each model in the results dataframe
+    for i in range(len(results)):
+        pipeline = results["pipeline"].iloc[i]
+        scores = results["scores"].iloc[i]
+        w_times = results["w_times"].iloc[i]
+
+        mean_scores = np.mean(scores, 0)
+
+        # Add score line
+        fig.add_trace(
+            go.Scatter(
+                x=w_times,
+                y=mean_scores,
+                mode="lines",
+                name=legend_names[pipeline],
+                line_color=colors[pipeline],  # "#074173"
+                line_width=3,
+            )
+        )
 
     # Add reference lines
     fig.add_vline(x=0, line=dict(color="black", width=2, dash="dash"), name="Onset")
@@ -155,9 +189,3 @@ def line_plot_by_time_intvl(w_times: pd.DataFrame, scores_windows, save_to_disk:
         fig.write_image(f"{img_folder}/{img_name}.svg", format="svg", scale=6)
 
     return fig
-
-
-if __name__ == "__main__":
-    results = pd.read_csv(f"{config.DISK_PATH}/results.csv")
-
-    bar_plot_by_subject(results=results, save_to_disk=config.SAVE_TO_DISK, img_name="roc_auc_5_fold_BNCI2014_001")

@@ -161,10 +161,3 @@ results["freq_bands_ranges"] = freq_bands_ranges_list
 
 if config.SAVE_TO_DISK:
     save_results_csv(results, f"{config.DISK_PATH}/{os.getenv('BNCI2014_001_MAIN_RESULTS')}", overwrite=False)
-
-
-##############################################################################
-# Plotting Results
-# results["subj"] = [str(resi).zfill(2) for resi in results["subject"]]
-
-bar_plot_by_subject(results=results, save_to_disk=config.SAVE_TO_DISK, img_name="roc_auc_5_fold_BNCI2014_001")

@@ -82,8 +82,7 @@ labels = epochs.events[:, -1] - 2
 scores = []
 epochs_data = epochs.get_data(copy=False)
 epochs_data_train = epochs_train.get_data(copy=False)
-cv = ShuffleSplit(10, test_size=0.2, random_state=42)
-cv_split = cv.split(epochs_data_train)
+
 
 ##################################################################################
 # This part differs from the original example because the pipeline used
@@ -167,6 +166,9 @@ w_start = np.arange(0, epochs_data.shape[2] - w_length, w_step)
 def score_clf(clf):
     scores_windows = []
 
+    cv = ShuffleSplit(10, test_size=0.2, random_state=42)
+    cv_split = cv.split(epochs_data_train)
+
     for train_idx, test_idx in cv_split:
         y_train, y_test = labels[train_idx], labels[test_idx]
 
@@ -212,4 +214,4 @@ results = pd.DataFrame(
 ##############################################################################
 # Save results to disk
 if config.SAVE_TO_DISK:
-    save_results_csv(results, f"{config.DISK_PATH}/{os.getenv('ACC_TIME_INTVLS_MAIN_RESULTS')}", overwrite=True)
+    save_results_csv(results, f"{config.DISK_PATH}/{os.getenv('EEGBCI_TIME_INTVLS_MAIN_RESULTS')}", overwrite=True)
