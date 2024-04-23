@@ -19,7 +19,9 @@ from mne import Epochs, events_from_annotations, pick_types
 from mne.channels import make_standard_montage
 from mne.datasets import eegbci
 from mne.io import concatenate_raws, read_raw_edf
-
+from mne.decoding import CSP
+from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
+from sklearn.pipeline import Pipeline
 
 import config
 from preprocessing.band_pass_filters import BandPassFilterEnsemble
