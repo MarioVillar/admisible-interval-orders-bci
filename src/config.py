@@ -15,8 +15,8 @@ SEED = 10
 
 
 # Frequency band intervals in which the EEG signal is going to be decomposed
-# FREQ_BANDS_RANGES = [(7, 13), (11, 17), (15, 21), (19, 25), (23, 30)]
-FREQ_BANDS_RANGES = [(7, 15), (11, 19), (15, 23), (19, 30)]
+FREQ_BANDS_RANGES = [(7, 13), (11, 17), (15, 21), (19, 25), (23, 30)]
+# FREQ_BANDS_RANGES = [(7, 15), (11, 19), (15, 23), (19, 30)]
 # FREQ_BANDS_RANGES = [(6, 10), (8, 15), (14, 28), (24, 35)]
 
 
@@ -39,9 +39,9 @@ MODEL_CLASS_KWARGS = [{"C": 0.1, "kernel": "linear", "probability": True}, {}, {
 
 
 # Cross-validation parameters
-CV_PARAMS_SVC = {"C": [0.1, 1, 10], "kernel": ["rbf"], "probability": [True]}
+CV_PARAMS_SVC = {"C": [0.01, 0.1, 1, 10], "kernel": ["linear", "rbf"], "probability": [True]}
 
-CV_PARAMS_RFC = {"n_estimators": [50, 100, 200], "max_depth": [None, 10, 20], "random_state": [SEED]}
+CV_PARAMS_RFC = {"n_estimators": [50, 100, 200, 300], "max_depth": [None, 10, 20], "random_state": [SEED]}
 
 
 # Whether to save the results to disk or not
