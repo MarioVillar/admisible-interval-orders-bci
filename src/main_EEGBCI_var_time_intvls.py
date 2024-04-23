@@ -155,6 +155,14 @@ clf_choquet = make_pipeline(bpfe_choquet, cspe_choquet, clf_choquet)
 clf_sugeno = make_pipeline(bpfe_sugeno, cspe_sugeno, clf_sugeno)
 
 
+##############################################################################
+# Create simple model
+
+lda = LinearDiscriminantAnalysis()
+csp = CSP(n_components=4, reg=None, log=True, norm_trace=False)
+clf_ind = Pipeline([("CSP", csp), ("LDA", lda)])
+
+
 ##################################################################################
 
 
@@ -187,6 +195,7 @@ def score_clf(clf):
 scores_mean = score_clf(clf_mean)
 scores_choquet = score_clf(clf_choquet)
 scores_sugeno = score_clf(clf_sugeno)
+scores_ind = score_clf(clf_ind)
 
 # Plot scores over time
 w_times = (w_start + w_length / 2.0) / sfreq + epochs.tmin
@@ -195,18 +204,20 @@ w_times = (w_start + w_length / 2.0) / sfreq + epochs.tmin
 # Create df to save it to disk
 results = pd.DataFrame(
     {
-        "pipeline": ["IntvlMeanEnsemble", "IntvlChoquetEnsemble", "IntvlSugenoEnsemble"],
-        "scores": [scores_mean, scores_choquet, scores_sugeno],
-        "w_times": [w_times, w_times, w_times],
+        "pipeline": ["IntvlMeanEnsemble", "IntvlChoquetEnsemble", "IntvlSugenoEnsemble", "CSP-LDA"],
+        "scores": [scores_mean, scores_choquet, scores_sugeno, scores_ind],
+        "w_times": [w_times, w_times, w_times, w_times],
         "param_comb": [
             best_params["IntvlMeanEnsemble"]["param_comb"],
             best_params["IntvlChoquetEnsemble"]["param_comb"],
             best_params["IntvlSugenoEnsemble"]["param_comb"],
+            [],
         ],
         "freq_bands_ranges": [
             best_params["IntvlMeanEnsemble"]["freq_bands_ranges"],
             best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"],
             best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"],
+            [],
         ],
     }
 )
