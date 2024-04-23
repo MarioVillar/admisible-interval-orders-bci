@@ -1,4 +1,3 @@
-import os
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
@@ -46,13 +45,17 @@ def bar_plot_by_subject(
 
     legend_names = {
         "IntvlMeanEnsemble": "Aggregation by mean",
-        "IntvlChoquetEnsemble": "Aggregation by Choquet Integral",
         "IntvlSugenoEnsemble": "Aggregation by Sugeno Integral",
+        "IntvlChoquetEnsemble": "Aggregation by Choquet Integral",
         "CSP-LDA": "CSP + LDA",
     }
 
-    # Plot each model
-    for pipeline, pdata in test_results.groupby("pipeline"):
+    test_results_grouped = test_results.groupby("pipeline")
+
+    for pipeline in list(legend_names.keys())[::-1]:
+        # Plot each model
+        pdata = test_results_grouped.get_group(pipeline)
+
         fig.add_trace(
             go.Bar(
                 x=pdata["score"],
@@ -79,6 +82,13 @@ def bar_plot_by_subject(
         dtick=0.1,
         tickfont=dict(size=12),
         titlefont=dict(size=14),
+        categoryorder="array",
+        categoryarray=[
+            "Aggregation by mean",
+            "Aggregation by Sugeno Integral",
+            "Aggregation by Choquet Integral",
+            "CSP + LDA",
+        ],
     )
 
     fig.update_layout(
@@ -125,13 +135,6 @@ def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, i
 
     fig = go.Figure()
 
-    legend_names = {
-        "IntvlMeanEnsemble": "Aggregation by mean",
-        "IntvlChoquetEnsemble": "Aggregation by Choquet Integral",
-        "IntvlSugenoEnsemble": "Aggregation by Sugeno Integral",
-        "CSP-LDA": "CSP + LDA",
-    }
-
     colors = {
         "IntvlMeanEnsemble": "#A4CE95",
         "IntvlChoquetEnsemble": "#5F5D9C",
@@ -139,25 +142,32 @@ def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, i
         "CSP-LDA": "#F7DCB9",
     }
 
+    legend_names = {
+        "IntvlMeanEnsemble": "Aggregation by mean",
+        "IntvlSugenoEnsemble": "Aggregation by Sugeno Integral",
+        "IntvlChoquetEnsemble": "Aggregation by Choquet Integral",
+        "CSP-LDA": "CSP + LDA",
+    }
+
     # For each model in the results dataframe
-    for i in range(len(results)):
-        pipeline = results["pipeline"].iloc[i]
-        scores = results["scores"].iloc[i]
-        w_times = results["w_times"].iloc[i]
+    for pipeline in legend_names.keys():
+        if pipeline in results["pipeline"].values:
+            scores = results[results["pipeline"] == pipeline].iloc[0]["scores"]
+            w_times = results[results["pipeline"] == pipeline].iloc[0]["w_times"]
 
-        mean_scores = np.mean(scores, 0)
+            mean_scores = np.mean(scores, 0)
 
-        # Add score line
-        fig.add_trace(
-            go.Scatter(
-                x=w_times,
-                y=mean_scores,
-                mode="lines",
-                name=legend_names[pipeline],
-                line_color=colors[pipeline],  # "#074173"
-                line_width=3,
+            # Add score line
+            fig.add_trace(
+                go.Scatter(
+                    x=w_times,
+                    y=mean_scores,
+                    mode="lines",
+                    name=legend_names[pipeline],
+                    line_color=colors[pipeline],  # "#074173"
+                    line_width=3,
+                )
             )
-        )
 
     # Add reference lines
     fig.add_vline(x=0, line=dict(color="black", width=2, dash="dash"), name="Onset")
