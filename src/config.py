@@ -16,8 +16,6 @@ SEED = 10
 
 # Frequency band intervals in which the EEG signal is going to be decomposed
 FREQ_BANDS_RANGES = [(7, 13), (11, 17), (15, 21), (19, 25), (23, 30)]
-# FREQ_BANDS_RANGES = [(7, 15), (11, 19), (15, 23), (19, 30)]
-# FREQ_BANDS_RANGES = [(6, 10), (8, 15), (14, 28), (24, 35)]
 
 
 FREQ_BANDS = [6, 10, 8, 15, 14, 28, 24, 35]

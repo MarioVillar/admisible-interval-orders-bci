@@ -160,7 +160,7 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
         ###############################
         # First condition
         # Obtain all the index pairs of the upper-triangle and lower-triangle of an n x n matrix.
-        # k=1 or k=-1 allows to exclude the diagonal of the matrix (there is no need to check each elemento with itself).
+        # k=1 or k=-1 allows to exclude the diagonal of the matrix (there is no need to check each element with itself).
         # These are all the pair of indexes that should be check for the first condition of admissibility.
         i, j = np.triu_indices(self.n_frec_ranges, k=1)  # Start from 1 diagonal above the main diagonal
         h, t = np.tril_indices(self.n_frec_ranges, k=-1)  # Start from 1 diagonal below the main diagonal

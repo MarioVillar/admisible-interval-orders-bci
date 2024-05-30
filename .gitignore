@@ -1,4 +1,4 @@
-testMain.py
+testMain*.py
 acc_var_diff_time_int_orig.py
 *.pkl
 localDB
