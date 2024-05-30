@@ -85,11 +85,14 @@ def save_results_csv(
 
             df = pd.concat([df, results], ignore_index=True)
 
-            df.drop_duplicates(
-                subset=["samples", "subject", "session", "channels", "n_sessions", "dataset", "pipeline"],
-                inplace=True,
-                keep="last",
-            )
+            col_drop_dup = ["samples", "subject", "session", "channels", "n_sessions", "dataset", "pipeline"]
+
+            if set(col_drop_dup).issubset(df.columns):
+                df.drop_duplicates(
+                    subset=col_drop_dup,
+                    inplace=True,
+                    keep="last",
+                )
 
             df.to_csv(csv_path, index=False)
         # Si el csv está completamente vacío (sin cabeceras ni nada) entonces se escribe directamente
