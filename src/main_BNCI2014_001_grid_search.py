@@ -90,6 +90,7 @@ for model_class_kwargs in param_grid:
         n_frec_ranges=len(config.FREQ_BANDS_RANGES),
         model_class_kwargs=model_class_kwargs,
         alpha=config.K_ALPHA,
+        beta=config.K_BETA,
     )
 
     clf_choquet = IntvlChoquetEnsemble.create_ensemble(
@@ -98,6 +99,7 @@ for model_class_kwargs in param_grid:
         n_frec_ranges=len(config.FREQ_BANDS_RANGES),
         model_class_kwargs=model_class_kwargs,
         alpha=config.K_ALPHA,
+        beta=config.K_BETA,
     )
 
     clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
@@ -106,6 +108,7 @@ for model_class_kwargs in param_grid:
         n_frec_ranges=len(config.FREQ_BANDS_RANGES),
         model_class_kwargs=model_class_kwargs,
         alpha=config.K_ALPHA,
+        beta=config.K_BETA,
     )
 
     ##############################################################################

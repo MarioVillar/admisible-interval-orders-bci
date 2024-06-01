@@ -80,6 +80,7 @@ clf_mean = IntvlMeanEnsemble.create_ensemble(
     n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"]),
     model_class_kwargs=best_params["IntvlMeanEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
+    beta=config.K_BETA,
 )
 
 clf_choquet = IntvlChoquetEnsemble.create_ensemble(
@@ -88,6 +89,7 @@ clf_choquet = IntvlChoquetEnsemble.create_ensemble(
     n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
     model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
+    beta=config.K_BETA,
 )
 
 clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
@@ -96,6 +98,7 @@ clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
     n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
     model_class_kwargs=best_params["IntvlSugenoEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
+    beta=config.K_BETA,
 )
 
 ##############################################################################
