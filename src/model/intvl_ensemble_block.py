@@ -17,11 +17,15 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
     is should be defined by the child classes.
     """
 
-    def __validate_params(self):
+    def _validate_params(self):
         assert len(self.ind_ensembles) > 0, "There should be at least one individual ensemble"
         assert 0 <= self.alpha <= 1, "Alpha should be between 0 and 1"
         assert 0 <= self.beta <= 1, "Beta should be between 0 and 1"
+        assert (
+            self.choquet_n_permu == -1 or self.choquet_n_permu > 0
+        ), "The number of admissible permutations in Choquet should be -1 (all) or greater than 0"
 
+        self.choquet_n_permu = int(self.choquet_n_permu)
         self._estimator_type = "classifier"
         self.n_frec_ranges = len(self.ind_ensembles)
         self.fuzzy_measure = self.card_fuzzy_measure()
@@ -33,6 +37,7 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         ind_ensembles: list = [],
         alpha: float = 0.5,
         beta: float = 0.6,
+        choquet_n_permu: int = -1,
         p: float = 2,
         n_jobs: int = -1,
         _estimator_type: Any = None,
@@ -51,6 +56,9 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         - beta : float
             The weight used in the K-beta mapping of the intervals in order to compare them (second criteria).
             The child class may use it for interval ordering.
+        - choquet_n_permu : int
+            Number of admissible permutations to be used in the Choquet integral calculation.
+                If -1, all permutations are used. In other case, the n best permutations are used.
         - p : float
             Exponent to which the expression of the fuzzy_measure is raised. The child class may use it for
             the fuzzy measure employed.
@@ -70,6 +78,7 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         self.ind_ensembles = ind_ensembles
         self.alpha = alpha
         self.beta = beta
+        self.choquet_n_permu = choquet_n_permu
         self.p = p
         self.n_jobs = n_jobs
         self._estimator_type = _estimator_type
@@ -88,6 +97,7 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         p: float = 2,
         alpha: float = 0.5,
         beta: float = 0.6,
+        choquet_n_permu: int = -1,
         n_jobs: int = -1,
     ):
         """
@@ -111,6 +121,9 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
             The weight used in the K-alpha mapping of the intervals in order to compare them.
         - beta : float
             The weight used in the K-beta mapping of the intervals in order to compare them (second criteria).
+        - choquet_n_permu : int
+            Number of admissible permutations to be used in the Choquet integral calculation.
+                If -1, all permutations are used. In other case, the n best permutations are used.
         - n_jobs : int
             Number of jobs to run in parallel.
 
@@ -144,7 +157,9 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
             # Create and store a new individual ensemble
             ind_ensembles.append(IntvlModelEnsemble(estimators=ind_estimators, **ind_model_ens_kwargs))
 
-        return cls(ind_ensembles=ind_ensembles, p=p, alpha=alpha, beta=beta, n_jobs=n_jobs)
+        return cls(
+            ind_ensembles=ind_ensembles, p=p, alpha=alpha, beta=beta, choquet_n_permu=choquet_n_permu, n_jobs=n_jobs
+        )
 
     def card_fuzzy_measure(self) -> np.ndarray:
         """
@@ -176,7 +191,7 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         - self : object of IntvlChoquetEnsemble
             The fitted instance.
         """
-        self.__validate_params()
+        self._validate_params()
 
         self.classes_, y = np.unique(y, return_inverse=True)
 
@@ -244,7 +259,7 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         - y : array-like of shape (n_samples, n_classes, n_frec_ranges, 2)
             Class probabilities of the input samples.
         """
-        self.__validate_params()
+        self._validate_params()
 
         # Defined for parallelization purposes
         def predict_proba_ind_ensemble(x: np.array, ensemble: IntvlModelEnsemble):

@@ -20,6 +20,17 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
     3. The class with the highest K-alpha value is the winning class.
     """
 
+    def _validate_params(self):
+        """
+        If it was a classifier, predict_proba must return one value per class.
+        In the Choquet integral, the K-alpha and K-beta mappings are computed for each class,
+          so two values are returned.
+        Fixing it as a regressor forces sklearn to call predict instead of predict_proba. However,
+            the predict method is not implemented as regressor, but as a classifier.
+        """
+        super()._validate_params()
+        self._estimator_type = "regressor"
+
     def predict_proba(self, X: np.array) -> np.array:
         """
         Predict class probabilities for X.
@@ -32,7 +43,7 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
         Returns
         -------
         - y : array-like of shape (n_samples, n_classes, 2)
-            Class probabilities of the input samples.
+            Class probabilities of the input samples, in the form of intervals.
         """
         y = self._predict_ensembles_proba(X=X)
 
@@ -46,14 +57,7 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
             Parallel(n_jobs=self.n_jobs)(delayed(self.intvl_choquet_integ)(intvl_set) for intvl_set in y_flattened),
         ).reshape((y.shape[0], y.shape[1], y.shape[3]))
 
-        # Apply the K-alpha and K-beta mappings to each interval prediction. It multiplies the infimum by
-        #   1-alpha or 1-beta and the supremum by alpha or beta.
-        alpha_mapping = np.dot(y[:, :, :], [1 - self.alpha, self.alpha])
-        beta_mapping = np.dot(y[:, :, :], [1 - self.beta, self.beta])
-
-        alpha_beta_mapping = np.stack((alpha_mapping, beta_mapping), axis=2)
-
-        return alpha_beta_mapping
+        return y
 
     def predict(self, X: np.array) -> np.array:
         """
@@ -75,20 +79,29 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
         # Obtain the class probabilities predictions
         class_probs = self.predict_proba(X)  # Shape (n_samples, n_classes, 2) -> alpha and beta mappings
 
-        # For each sample, return the class with the highest K-alpha,K-beta mapping
-        def k_alpha_beta_argmax(sample):
-            max_index = 0
-            max_value = sample[0]  # Contains the K-alpha and K-beta mappings
+        # Apply the K-alpha and K-beta mappings to each interval prediction. It multiplies the infimum by
+        #   1-alpha or 1-beta and the supremum by alpha or beta.
+        alpha_mapping = np.dot(class_probs[:, :, :], [1 - self.alpha, self.alpha])
+        beta_mapping = np.dot(class_probs[:, :, :], [1 - self.beta, self.beta])
 
-            for i in range(1, len(sample)):
-                if (sample[i][0] > max_value[0]) or (sample[i][0] == max_value[0] and sample[i][1] > max_value[1]):
-                    max_index = i
-                    max_value = sample[i]
+        # class_probs = np.stack((alpha_mapping, beta_mapping), axis=2)
 
-            return max_index
+        # # For each sample, return the class with the highest K-alpha,K-beta mapping
+        # def k_alpha_beta_argmax(sample):
+        #     max_index = 0
+        #     max_value = sample[0]  # Contains the K-alpha and K-beta mappings
 
-        # Return the winning class for each of the samples received
-        return np.apply_along_axis(k_alpha_beta_argmax, axis=1, arr=class_probs)
+        #     for i in range(1, len(sample)):
+        #         if (sample[i][0] > max_value[0]) or (sample[i][0] == max_value[0] and sample[i][1] > max_value[1]):
+        #             max_index = i
+        #             max_value = sample[i]
+
+        #     return max_index
+
+        # # Return the winning class for each of the samples received
+        # return np.array([k_alpha_beta_argmax(sample) for sample in class_probs])
+
+        return np.argmax(np.lexsort((alpha_mapping, beta_mapping)), axis=1)
 
     def intvl_choquet_integ(self, intvl_set: np.ndarray) -> np.ndarray:
         """
@@ -114,47 +127,43 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
         - intvl_choquet_integ : array-like of shape (2,)
             Resulting interval obtained by the Choquet integral.
         """
-
-        # Defined for parallelization purposes
-        def compute_choquet_integ_permu(sigma):
-            """
-            Compute the interval Choquet integral for a specific admissible permutation.
-
-            Parameters
-            ----------
-            - sigma : array-like of shape (n_frec_ranges,)
-                Current permutation of the set of intervals. Index i contains the index in the original vector of
-                    the element that has been mapped to position i by the permutation.
-
-            Returns
-            -------
-            - choquet_integ_permu : list of shape (2,2)
-                First component has the meaning of whether the permutation was admissible (1) or not (0). It has
-                    shape (2,) to be able to use np arrays over the Parallel function result. The sum of its first
-                    component is the number of admissible permutations found.
-                Second component is the resulting interval obtained by the Choquet integral (admissible permutations)
-                    or zero interval (non-admissible permutations, so they do not influence on the summatory).
-            """
-            if self.is_admissible_permu(intvl_set=intvl_set, sigma=sigma):
-                return [[1, 1], self.intvl_choquet_integ_permu(intvl_set, np.array(sigma))]
-            else:
-                return [[0, 0], [0, 0]]
-
         orig_indexes = np.arange(self.n_frec_ranges)
 
         # Obtain all permutations
         sigma_list = permutations(orig_indexes)
 
+        # Filter just the admissible permutations
+        sigma_list = [sigma for sigma in sigma_list if self.is_admissible_permu(intvl_set=intvl_set, sigma=sigma)]
+
+        # If not all the admissible permutations should be used
+        if self.choquet_n_permu != -1:
+            # Compute the degrees of totalness for each permutation. Shape -> (len(sigma_list), n_frec_ranges-1)
+            dt_permus = np.array([self.degree_totalness(intvl_set=intvl_set, sigma=np.array(i)) for i in sigma_list])
+
+            # Compute M1 and M2 aggregation functions (average and minimum)
+            mean_dt_permus = np.mean(dt_permus, axis=1)
+            min_dt_permus = np.min(dt_permus, axis=1)
+
+            # Sort first by M1 and then by M2
+            idx_permu = np.lexsort((min_dt_permus, mean_dt_permus))
+
+            # Select the `self.choquet_n_permu` best permutations
+            idx_best_permu = idx_permu[: self.choquet_n_permu]
+
+            # Update the list of permutations to be used
+            sigma_list = [sigma_list[i] for i in idx_best_permu]
+
         # Run in parallel mode
         results = np.array(
-            Parallel(n_jobs=self.n_jobs)(delayed(compute_choquet_integ_permu)(sigma) for sigma in sigma_list)
+            Parallel(n_jobs=self.n_jobs)(
+                delayed(self.intvl_choquet_integ_permu)(intvl_set, np.array(sigma)) for sigma in sigma_list
+            )
         )
 
-        # Compute the sum of interval Choquet integrals and count the number of admissible permutations
-        n_admissible_permus = np.sum(results[:, 0, 0])
-        choquet_integ_sum = np.sum(results[:, 1], axis=0)
+        # Compute the sum of interval Choquet integrals
+        choquet_integ_sum = np.sum(results, axis=0)
 
-        return choquet_integ_sum / n_admissible_permus
+        return choquet_integ_sum / len(sigma_list)
 
     def is_admissible_permu(self, intvl_set: np.ndarray, sigma: np.ndarray) -> bool:
         """
@@ -264,3 +273,31 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
 
         # Multiply each fuzzy measure difference by the corresponding interval and compute the sumatory of resulting intervals
         return np.sum((intvl_set[sigma].transpose() * fuzzy_measure_diff).transpose(), axis=0)
+
+    def degree_totalness(self, intvl_set: np.ndarray, sigma: np.ndarray) -> np.ndarray:
+        """
+        Totalness degree of a permutation.
+
+        Parameters
+        ----------
+        - intvl_set : array-like of shape (n_frec_ranges,2)
+            Set of intervals to be used in the Choquet integral.
+        - sigma : array-like of shape (n_frec_ranges,)
+            Current permutation of the set of intervals. Index i contains the index in the original vector of
+            the element that has been mapped to position i by the permutation.
+
+        Returns
+        -------
+        - dt : array-like of shape (len(sigma)-1,)
+            Degree of totalness of the permutation.
+        """
+        dt = np.zeros(len(sigma) - 1)
+
+        for i in range(0, len(sigma) - 1):
+            dt[i] = 1 - max(
+                0,
+                intvl_set[sigma[i]][0] - intvl_set[sigma[i + 1]][0],
+                intvl_set[sigma[i]][1] - intvl_set[sigma[i + 1]][1],
+            )
+
+        return dt

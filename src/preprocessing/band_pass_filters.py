@@ -12,7 +12,7 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
     A new axis is created in the original data, and the output of each filter is concatenated on it.
     """
 
-    def __validate_params(self) -> None:
+    def _validate_params(self) -> None:
         """Validates the parameters of the transformer.
 
         As described in https://scikit-learn.org/stable/developers/develop.html#instantiation,
@@ -69,7 +69,7 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
         self : object
             Fitted (no changes) transformer.
         """
-        self.__validate_params()
+        self._validate_params()
         return self
 
     def transform(self, X: np.array, y: np.array = None) -> np.array:
@@ -91,7 +91,7 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
             Transformed samples.
             The output of each band-pass filter is concatenated on a new axis.
         """
-        self.__validate_params()
+        self._validate_params()
 
         X_transformed = [
             filter_data(X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1], n_jobs=self.n_jobs)

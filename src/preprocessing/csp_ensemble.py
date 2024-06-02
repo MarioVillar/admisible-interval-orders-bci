@@ -12,7 +12,7 @@ class CSPEnsemble(BaseEstimator, TransformerMixin):
     Applies CPS to each of the data series separated by band-pass filters in a previous step.
     """
 
-    def __validate_params(self, check_csp_list: bool = False) -> None:
+    def _validate_params(self, check_csp_list: bool = False) -> None:
         """Validates the parameters of the transformer.
 
         As described in https://scikit-learn.org/stable/developers/develop.html#instantiation,
@@ -74,7 +74,7 @@ class CSPEnsemble(BaseEstimator, TransformerMixin):
         self : object of CSPEnsemble
             The fitted instance.
         """
-        self.__validate_params()
+        self._validate_params()
 
         # Defined for parallelization purposes
         def fit_csp(series):
@@ -115,7 +115,7 @@ class CSPEnsemble(BaseEstimator, TransformerMixin):
             Transformed samples.
             The output of each band-pass filter is concatenated on a new axis.
         """
-        self.__validate_params(check_csp_list=True)
+        self._validate_params(check_csp_list=True)
 
         # Defined for parallelization purposes
         def transform_csp(series, csp):
