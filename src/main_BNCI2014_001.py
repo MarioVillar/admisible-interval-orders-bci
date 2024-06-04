@@ -143,7 +143,7 @@ evaluation = WithinSessionEvaluation(
     n_jobs=-1,
     n_jobs_evaluation=-1,
     random_state=config.SEED,
-    additional_columns=["score_std"],
+    additional_columns=["score_std", "scores_cv"],
 )
 
 results = evaluation.process(
