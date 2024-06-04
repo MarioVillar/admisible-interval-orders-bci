@@ -23,9 +23,6 @@ from model.intvl_sugeno_ensemble import IntvlSugenoEnsemble
 
 from evaluation.grid_param_search import get_best_params
 
-from visualization.plot_results import bar_plot_by_subject
-
-
 #############################################################################
 mne.set_log_level("CRITICAL")
 moabb.set_log_level("ERROR")
@@ -53,6 +50,9 @@ sfreq = subject_data[1][list(subject_data[1].keys())[0]]["0"].info["sfreq"]
 
 bpfe_mean = BandPassFilterEnsemble(frec_ranges=best_params["IntvlMeanEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
 bpfe_choquet = BandPassFilterEnsemble(frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
+bpfe_choquet_n_best = BandPassFilterEnsemble(
+    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq
+)
 bpfe_sugeno = BandPassFilterEnsemble(frec_ranges=best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
 
 
@@ -62,6 +62,9 @@ cspe_mean = CSPEnsemble(
     n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"])
 )
 cspe_choquet = CSPEnsemble(
+    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"])
+)
+cspe_choquet_n_best = CSPEnsemble(
     n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"])
 )
 cspe_sugeno = CSPEnsemble(
@@ -92,6 +95,16 @@ clf_choquet = IntvlChoquetEnsemble.create_ensemble(
     beta=config.K_BETA,
 )
 
+clf_choquet_n_best = IntvlChoquetEnsemble.create_ensemble(
+    model_class_list=config.MODEL_TYPES_LIST,
+    model_class_names=config.MODEL_CLASS_NAMES,
+    n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
+    model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
+    alpha=config.K_ALPHA,
+    beta=config.K_BETA,
+    choquet_n_permu=config.N_ADMIS_PERMU,
+)
+
 clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
     model_class_list=config.MODEL_TYPES_LIST,
     model_class_names=config.MODEL_CLASS_NAMES,
@@ -113,6 +126,7 @@ clf_ind = Pipeline([("CSP", csp), ("LDA", lda)])
 # Pipeline
 pipeline_mean = make_pipeline(bpfe_mean, cspe_mean, clf_mean)
 pipeline_choquet = make_pipeline(bpfe_choquet, cspe_choquet, clf_choquet)
+pipeline_choquet_n_best = make_pipeline(bpfe_choquet_n_best, cspe_choquet_n_best, clf_choquet_n_best)
 pipeline_sugeno = make_pipeline(bpfe_sugeno, cspe_sugeno, clf_sugeno)
 
 
@@ -136,6 +150,7 @@ results = evaluation.process(
     {
         "IntvlMeanEnsemble": pipeline_mean,
         "IntvlChoquetEnsemble": pipeline_choquet,
+        "IntvlChoquetEnsembleNBest": pipeline_choquet_n_best,
         "IntvlSugenoEnsemble": pipeline_sugeno,
         "CSP-LDA": clf_ind,
     }

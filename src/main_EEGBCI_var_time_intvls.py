@@ -94,6 +94,9 @@ for subject in range(1, 110):
     bpfe_choquet = BandPassFilterEnsemble(
         frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq
     )
+    bpfe_choquet_n_best = BandPassFilterEnsemble(
+        frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq
+    )
     bpfe_sugeno = BandPassFilterEnsemble(
         frec_ranges=best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"], sfreq=sfreq
     )
@@ -104,6 +107,9 @@ for subject in range(1, 110):
         n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"])
     )
     cspe_choquet = CSPEnsemble(
+        n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"])
+    )
+    cspe_choquet_n_best = CSPEnsemble(
         n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"])
     )
     cspe_sugeno = CSPEnsemble(
@@ -130,6 +136,14 @@ for subject in range(1, 110):
         alpha=config.K_ALPHA,
     )
 
+    clf_choquet_n_best = IntvlChoquetEnsemble.create_ensemble(
+        model_class_list=config.MODEL_TYPES_LIST,
+        model_class_names=config.MODEL_CLASS_NAMES,
+        n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
+        model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
+        alpha=config.K_ALPHA,
+    )
+
     clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
         model_class_list=config.MODEL_TYPES_LIST,
         model_class_names=config.MODEL_CLASS_NAMES,
@@ -142,6 +156,7 @@ for subject in range(1, 110):
     # Pipeline
     clf_mean = make_pipeline(bpfe_mean, cspe_mean, clf_mean)
     clf_choquet = make_pipeline(bpfe_choquet, cspe_choquet, clf_choquet)
+    clf_choquet_n_best = make_pipeline(bpfe_choquet, cspe_choquet, clf_choquet)
     clf_sugeno = make_pipeline(bpfe_sugeno, cspe_sugeno, clf_sugeno)
 
     ##############################################################################
@@ -179,6 +194,7 @@ for subject in range(1, 110):
 
     scores_mean = score_clf(clf_mean)
     scores_choquet = score_clf(clf_choquet)
+    scores_choquet_n_best = score_clf(clf_choquet_n_best)
     scores_sugeno = score_clf(clf_sugeno)
     scores_ind = score_clf(clf_ind)
 
@@ -188,11 +204,18 @@ for subject in range(1, 110):
     # Create df to save it to disk
     results = pd.DataFrame(
         {
-            "pipeline": ["IntvlMeanEnsemble", "IntvlChoquetEnsemble", "IntvlSugenoEnsemble", "CSP-LDA"],
-            "scores": [scores_mean, scores_choquet, scores_sugeno, scores_ind],
-            "w_times": [w_times, w_times, w_times, w_times],
+            "pipeline": [
+                "IntvlMeanEnsemble",
+                "IntvlChoquetEnsemble",
+                "IntvlChoquetEnsembleNBest",
+                "IntvlSugenoEnsemble",
+                "CSP-LDA",
+            ],
+            "scores": [scores_mean, scores_choquet, scores_choquet_n_best, scores_sugeno, scores_ind],
+            "w_times": [w_times, w_times, w_times, w_times, w_times],
             "param_comb": [
                 best_params["IntvlMeanEnsemble"]["param_comb"],
+                best_params["IntvlChoquetEnsemble"]["param_comb"],
                 best_params["IntvlChoquetEnsemble"]["param_comb"],
                 best_params["IntvlSugenoEnsemble"]["param_comb"],
                 [],
@@ -200,10 +223,11 @@ for subject in range(1, 110):
             "freq_bands_ranges": [
                 best_params["IntvlMeanEnsemble"]["freq_bands_ranges"],
                 best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"],
+                best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"],
                 best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"],
                 [],
             ],
-            "subject": [subject, subject, subject, subject],
+            "subject": [subject, subject, subject, subject, subject],
         }
     )
 
