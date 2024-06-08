@@ -3,6 +3,8 @@ import numpy as np
 from sklearn.base import BaseEstimator, TransformerMixin
 from joblib import Parallel, delayed
 
+from utils import parallelization
+
 
 class CSPEnsemble(BaseEstimator, TransformerMixin):
     """
@@ -84,7 +86,9 @@ class CSPEnsemble(BaseEstimator, TransformerMixin):
             )
 
         # Run in parallel mode
+        orig_set = parallelization.get_current_childs()
         self.csp_list = Parallel(n_jobs=self.n_jobs)(delayed(fit_csp)(series) for series in X)
+        parallelization.kill_diff_childs(orig_set)
 
         # # For each frequency range, create a new CSP object, fit it to the data
         # #   and store it in the list of CSP objects
@@ -122,8 +126,10 @@ class CSPEnsemble(BaseEstimator, TransformerMixin):
             return csp.transform(series)
 
         # Run in parallel mode
+        orig_set = parallelization.get_current_childs()
         X_transformed = Parallel(n_jobs=self.n_jobs)(
             delayed(transform_csp)(series, csp) for series, csp in zip(X, self.csp_list)
         )
+        parallelization.kill_diff_childs(orig_set)
 
         return np.array(X_transformed)

@@ -3,6 +3,7 @@ import numpy as np
 from itertools import permutations
 
 from .intvl_ensemble_block import IntvlEnsembleBlock
+from utils import parallelization
 
 
 class IntvlChoquetEnsemble(IntvlEnsembleBlock):
@@ -53,9 +54,11 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
         # Run in parallel mode
         # The output is reshaped to the original shape but the dimension of each model (which
         #   each agreggated by the choquet integral)
+        orig_set = parallelization.get_current_childs()
         y = np.array(
             Parallel(n_jobs=self.n_jobs)(delayed(self.intvl_choquet_integ)(intvl_set) for intvl_set in y_flattened),
         ).reshape((y.shape[0], y.shape[1], y.shape[3]))
+        parallelization.kill_diff_childs(orig_set)
 
         return y
 
@@ -154,11 +157,13 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
             sigma_list = [sigma_list[i] for i in idx_best_permu]
 
         # Run in parallel mode
+        orig_set = parallelization.get_current_childs()
         results = np.array(
             Parallel(n_jobs=self.n_jobs)(
                 delayed(self.intvl_choquet_integ_permu)(intvl_set, np.array(sigma)) for sigma in sigma_list
             )
         )
+        parallelization.kill_diff_childs(orig_set)
 
         # Compute the sum of interval Choquet integrals
         choquet_integ_sum = np.sum(results, axis=0)
