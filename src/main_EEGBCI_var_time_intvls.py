@@ -22,6 +22,8 @@ from mne.io import concatenate_raws, read_raw_edf
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
+from sklearnex import patch_sklearn
+
 
 import config
 from preprocessing.band_pass_filters import BandPassFilterEnsemble
@@ -37,6 +39,7 @@ from evaluation.grid_param_search import get_best_params
 mne.set_log_level("CRITICAL")
 moabb_set_log_level("ERROR")
 warnings.filterwarnings("ignore")
+patch_sklearn()
 
 
 #############################################################################
@@ -125,7 +128,6 @@ for subject in range(1, 110):
         model_class_names=config.MODEL_CLASS_NAMES,
         n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"]),
         model_class_kwargs=best_params["IntvlMeanEnsemble"]["param_comb"],
-        alpha=config.K_ALPHA,
     )
 
     clf_choquet = IntvlChoquetEnsemble.create_ensemble(
@@ -134,6 +136,7 @@ for subject in range(1, 110):
         n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
         model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
         alpha=config.K_ALPHA,
+        beta=config.K_BETA,
     )
 
     clf_choquet_n_best = IntvlChoquetEnsemble.create_ensemble(
@@ -142,6 +145,8 @@ for subject in range(1, 110):
         n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
         model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
         alpha=config.K_ALPHA,
+        beta=config.K_BETA,
+        choquet_n_permu=config.N_ADMIS_PERMU,
     )
 
     clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
@@ -149,14 +154,13 @@ for subject in range(1, 110):
         model_class_names=config.MODEL_CLASS_NAMES,
         n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
         model_class_kwargs=best_params["IntvlSugenoEnsemble"]["param_comb"],
-        alpha=config.K_ALPHA,
     )
 
     ##############################################################################
     # Pipeline
     clf_mean = make_pipeline(bpfe_mean, cspe_mean, clf_mean)
     clf_choquet = make_pipeline(bpfe_choquet, cspe_choquet, clf_choquet)
-    clf_choquet_n_best = make_pipeline(bpfe_choquet, cspe_choquet, clf_choquet)
+    clf_choquet_n_best = make_pipeline(bpfe_choquet_n_best, cspe_choquet_n_best, clf_choquet_n_best)
     clf_sugeno = make_pipeline(bpfe_sugeno, cspe_sugeno, clf_sugeno)
 
     ##############################################################################

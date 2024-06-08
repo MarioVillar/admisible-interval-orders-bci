@@ -94,7 +94,9 @@ class BandPassFilterEnsemble(BaseEstimator, TransformerMixin):
         self._validate_params()
 
         X_transformed = [
-            filter_data(X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1], n_jobs=self.n_jobs)
+            filter_data(
+                X, sfreq=self.sfreq, l_freq=frec_range[0], h_freq=frec_range[1], n_jobs=self.n_jobs, verbose="CRITICAL"
+            )
             for frec_range in self.frec_ranges
         ]
 

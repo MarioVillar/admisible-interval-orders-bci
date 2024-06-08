@@ -2,6 +2,7 @@ import os
 import warnings
 import mne
 import pandas as pd
+import numpy as np
 from sklearn.pipeline import make_pipeline
 import moabb
 from moabb.datasets import BNCI2014_001
@@ -10,6 +11,7 @@ from moabb.paradigms import LeftRightImagery
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
 from mne.decoding import CSP
+from sklearnex import patch_sklearn
 
 import config
 from utils.disk import save_results_csv
@@ -24,9 +26,10 @@ from model.intvl_sugeno_ensemble import IntvlSugenoEnsemble
 from evaluation.grid_param_search import get_best_params
 
 #############################################################################
-mne.set_log_level("CRITICAL")
+mne.set_log_level("warning")
 moabb.set_log_level("ERROR")
 warnings.filterwarnings("ignore")
+patch_sklearn()
 
 
 ##############################################################################
@@ -48,27 +51,41 @@ best_params = get_best_params(pd.read_csv(f"{config.DISK_PATH}/{os.getenv('BNCI2
 subject_data = dataset.get_data(subjects=[1])
 sfreq = subject_data[1][list(subject_data[1].keys())[0]]["0"].info["sfreq"]
 
-bpfe_mean = BandPassFilterEnsemble(frec_ranges=best_params["IntvlMeanEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
-bpfe_choquet = BandPassFilterEnsemble(frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
-bpfe_choquet_n_best = BandPassFilterEnsemble(
-    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq
+bpfe_mean = BandPassFilterEnsemble(
+    frec_ranges=best_params["IntvlMeanEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
 )
-bpfe_sugeno = BandPassFilterEnsemble(frec_ranges=best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"], sfreq=sfreq)
+bpfe_choquet = BandPassFilterEnsemble(
+    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
+)
+bpfe_choquet_n_best = BandPassFilterEnsemble(
+    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
+)
+bpfe_sugeno = BandPassFilterEnsemble(
+    frec_ranges=best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
+)
 
 
 ##############################################################################
 # Create CSP ensemble
 cspe_mean = CSPEnsemble(
-    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"])
+    n_components=config.CSP_COMPONENTS,
+    n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"]),
+    n_jobs=config.N_JOBS,
 )
 cspe_choquet = CSPEnsemble(
-    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"])
+    n_components=config.CSP_COMPONENTS,
+    n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
+    n_jobs=config.N_JOBS,
 )
 cspe_choquet_n_best = CSPEnsemble(
-    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"])
+    n_components=config.CSP_COMPONENTS,
+    n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
+    n_jobs=config.N_JOBS,
 )
 cspe_sugeno = CSPEnsemble(
-    n_components=config.CSP_COMPONENTS, n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"])
+    n_components=config.CSP_COMPONENTS,
+    n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
+    n_jobs=config.N_JOBS,
 )
 
 
@@ -82,8 +99,7 @@ clf_mean = IntvlMeanEnsemble.create_ensemble(
     model_class_names=config.MODEL_CLASS_NAMES,
     n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"]),
     model_class_kwargs=best_params["IntvlMeanEnsemble"]["param_comb"],
-    alpha=config.K_ALPHA,
-    beta=config.K_BETA,
+    n_jobs=config.N_JOBS,
 )
 
 clf_choquet = IntvlChoquetEnsemble.create_ensemble(
@@ -93,6 +109,7 @@ clf_choquet = IntvlChoquetEnsemble.create_ensemble(
     model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
     beta=config.K_BETA,
+    n_jobs=config.N_JOBS,
 )
 
 clf_choquet_n_best = IntvlChoquetEnsemble.create_ensemble(
@@ -103,6 +120,7 @@ clf_choquet_n_best = IntvlChoquetEnsemble.create_ensemble(
     alpha=config.K_ALPHA,
     beta=config.K_BETA,
     choquet_n_permu=config.N_ADMIS_PERMU,
+    n_jobs=config.N_JOBS,
 )
 
 clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
@@ -110,8 +128,7 @@ clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
     model_class_names=config.MODEL_CLASS_NAMES,
     n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
     model_class_kwargs=best_params["IntvlSugenoEnsemble"]["param_comb"],
-    alpha=config.K_ALPHA,
-    beta=config.K_BETA,
+    n_jobs=config.N_JOBS,
 )
 
 ##############################################################################
@@ -143,7 +160,7 @@ evaluation = WithinSessionEvaluation(
     n_jobs=-1,
     n_jobs_evaluation=-1,
     random_state=config.SEED,
-    additional_columns=["score_std", "scores_cv"],
+    additional_columns=["score_std"] + [f"scores_cv_{i}" for i in range(5)],
 )
 
 results = evaluation.process(
@@ -159,6 +176,7 @@ results = evaluation.process(
 
 param_comb_list = []
 freq_bands_ranges_list = []
+scores_cv_list = []
 
 for i in range(len(results)):
     pipeline = results.loc[i, "pipeline"]
@@ -167,11 +185,19 @@ for i in range(len(results)):
         param_comb_list.append({})
         freq_bands_ranges_list.append([])
     else:
+        if pipeline == "IntvlChoquetEnsembleNBest":
+            pipeline = "IntvlChoquetEnsemble"
         param_comb_list.append(best_params[pipeline]["param_comb"])
         freq_bands_ranges_list.append(best_params[pipeline]["freq_bands_ranges"])
 
+    # Undo the sloppy change made in MOABB to record all the cv scores
+    scores_cv_list.append([results.iloc[i][f"scores_cv_{j}"] for j in range(5)])
+
+results = results.drop([f"scores_cv_{i}" for i in range(5)], axis=1)
+
 results["param_comb"] = param_comb_list
 results["freq_bands_ranges"] = freq_bands_ranges_list
+results["scores_cv"] = scores_cv_list
 
 
 ##############################################################################

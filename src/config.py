@@ -53,3 +53,6 @@ SAVE_HDF5 = os.getenv("SAVE_HDF5").lower() == "true"
 
 # Path to save the results
 DISK_PATH = get_disk_path()
+
+
+N_JOBS = 1
