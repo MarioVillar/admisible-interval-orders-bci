@@ -23,6 +23,7 @@ from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
 from sklearnex import patch_sklearn
+import gc
 
 
 import config
@@ -239,3 +240,5 @@ for subject in range(1, 110):
     # Save results to disk
     if config.SAVE_TO_DISK:
         save_results_csv(results, f"{config.DISK_PATH}/{os.getenv('EEGBCI_TIME_INTVLS_MAIN_RESULTS')}", overwrite=False)
+
+    gc.collect()

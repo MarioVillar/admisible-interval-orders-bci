@@ -5,7 +5,6 @@ from typing import Any
 from abc import ABC, abstractmethod
 
 from .intvl_model_ensemble import IntvlModelEnsemble
-from utils import parallelization
 
 
 class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
@@ -203,11 +202,9 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         # Run in parallel mode
         #   For each individual ensemble, the corresponding frecuency band range date is passed and it is fitted on it
         #   The fitted individual ensembles are returned and overwrite the previous ones
-        orig_set = parallelization.get_current_childs()
         self.ind_ensembles = Parallel(n_jobs=self.n_jobs)(
             delayed(fit_ind_ensemble)(x, ensemble) for x, ensemble in zip(X, self.ind_ensembles)
         )
-        parallelization.kill_diff_childs(orig_set)
 
         return self
 
@@ -270,13 +267,11 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
 
         # Run in parallel mode
         # Return shape: (n_samples, n_classes, n_frec_ranges, 2)
-        orig_set = parallelization.get_current_childs()
         y = np.stack(
             Parallel(n_jobs=self.n_jobs)(
                 delayed(predict_proba_ind_ensemble)(x, ensemble) for x, ensemble in zip(X, self.ind_ensembles)
             ),
             axis=2,
         )
-        parallelization.kill_diff_childs(orig_set)
 
         return y
