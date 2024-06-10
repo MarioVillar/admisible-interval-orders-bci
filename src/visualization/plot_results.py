@@ -39,15 +39,17 @@ def bar_plot_by_subject(
     colors = {
         "IntvlMeanEnsemble": "#A4CE95",
         "IntvlChoquetEnsemble": "#5F5D9C",
+        "IntvlChoquetEnsembleNBest": "#a897ff",
         "IntvlSugenoEnsemble": "#6196A6",
         "CSP-LDA": "#F7DCB9",
     }
 
     legend_names = {
-        "IntvlMeanEnsemble": "Aggregation by mean",
-        "IntvlSugenoEnsemble": "Aggregation by Sugeno Integral",
-        "IntvlChoquetEnsemble": "Aggregation by Choquet Integral",
         "CSP-LDA": "CSP + LDA",
+        "IntvlChoquetEnsembleNBest": "Ensemble + Choquet (3 best)",
+        "IntvlChoquetEnsemble": "Ensemble + Choquet",
+        "IntvlSugenoEnsemble": "Ensemble + Sugeno",
+        "IntvlMeanEnsemble": "Ensemble + Mean",
     }
 
     test_results_grouped = test_results.groupby("pipeline")
@@ -69,7 +71,11 @@ def bar_plot_by_subject(
 
     # Format plot
     fig.update_yaxes(
-        showline=True, linewidth=1, linecolor="#323232", mirror=True, tickfont=dict(size=12), titlefont=dict(size=14)
+        showline=True,
+        linewidth=1,
+        linecolor="#323232",
+        mirror=True,
+        autorange="reversed",
     )
 
     fig.update_xaxes(
@@ -80,27 +86,24 @@ def bar_plot_by_subject(
         range=[0, 1],
         gridcolor="black",
         dtick=0.1,
-        tickfont=dict(size=12),
-        titlefont=dict(size=14),
-        categoryorder="array",
-        categoryarray=[
-            "Aggregation by mean",
-            "Aggregation by Sugeno Integral",
-            "Aggregation by Choquet Integral",
-            "CSP + LDA",
-        ],
     )
 
     fig.update_layout(
-        height=600,
-        width=1000,
-        title=dict(text="ROC AUC en 5-fold CV por sujeto y modelo", x=0.25),
+        height=900,
+        width=800,
+        # title=dict(text="ROC AUC per subject and model in BCIGRAZ", x=0.25),
         xaxis_title="ROC AUC",
-        yaxis_title="Sujeto",
+        yaxis_title="Subject",
         plot_bgcolor="white",
-        font=dict(family="Times New Roman"),
-        legend=dict(font=dict(size=14), traceorder="reversed"),
-        margin=dict(t=40),
+        font=dict(family="Times New Roman", size=22),
+        legend=dict(
+            orientation="h",
+            y=-0.25,
+            x=0.5,
+            xanchor="center",
+            yanchor="bottom",
+        ),
+        margin=dict(t=20),
     )
 
     fig.show()
@@ -138,14 +141,16 @@ def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, i
     colors = {
         "IntvlMeanEnsemble": "#A4CE95",
         "IntvlChoquetEnsemble": "#5F5D9C",
+        "IntvlChoquetEnsembleNBest": "#a897ff",
         "IntvlSugenoEnsemble": "#6196A6",
         "CSP-LDA": "#F7DCB9",
     }
 
     legend_names = {
-        "IntvlMeanEnsemble": "Aggregation by mean",
-        "IntvlSugenoEnsemble": "Aggregation by Sugeno Integral",
-        "IntvlChoquetEnsemble": "Aggregation by Choquet Integral",
+        "IntvlMeanEnsemble": "Ensemble + Mean",
+        "IntvlSugenoEnsemble": "Ensemble + Sugeno",
+        "IntvlChoquetEnsemble": "Ensemble + Choquet",
+        "IntvlChoquetEnsembleNBest": "Ensemble + Choquet (3 best)",
         "CSP-LDA": "CSP + LDA",
     }
 
@@ -155,7 +160,7 @@ def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, i
             scores = results[results["pipeline"] == pipeline].iloc[0]["scores"]
             w_times = results[results["pipeline"] == pipeline].iloc[0]["w_times"]
 
-            mean_scores = np.mean(scores, 0)
+            mean_scores = np.Mean(scores, 0)
 
             # Add score line
             fig.add_trace(
