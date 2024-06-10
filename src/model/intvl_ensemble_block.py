@@ -1,6 +1,7 @@
 from joblib import Parallel, delayed
 import numpy as np
 from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.metrics import roc_auc_score
 from typing import Any
 from abc import ABC, abstractmethod
 
@@ -15,6 +16,8 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
     A IntvlModelEnsemble is used on each frecuency band range. The model types comprising each individual
     ensemble are the same. Then, the predictions of each frequency range and class integration
     is should be defined by the child classes.
+
+
     """
 
     def _validate_params(self):
@@ -275,3 +278,25 @@ class IntvlEnsembleBlock(ABC, BaseEstimator, ClassifierMixin):
         )
 
         return y
+
+    def score(self, X, y, sample_weight=None):
+        """
+        Return the mean roc auc on the given test data and labels.
+
+        Parameters
+        ----------
+        X : array-like of shape (n_samples, n_features)
+            Test samples.
+
+        y : array-like of shape (n_samples,) or (n_samples, n_outputs)
+            True labels for `X`.
+
+        sample_weight : array-like of shape (n_samples,), default=None
+            Sample weights.
+
+        Returns
+        -------
+        score : float
+            Mean roc auc of ``self.predict(X)`` w.r.t. `y`.
+        """
+        return roc_auc_score(y, self.predict(X), sample_weight=sample_weight)
