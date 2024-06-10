@@ -22,7 +22,6 @@ from mne.io import concatenate_raws, read_raw_edf
 from mne.decoding import CSP
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.pipeline import Pipeline
-from sklearnex import patch_sklearn
 import gc
 
 
@@ -40,7 +39,6 @@ from evaluation.grid_param_search import get_best_params
 mne.set_log_level("CRITICAL")
 moabb_set_log_level("ERROR")
 warnings.filterwarnings("ignore")
-patch_sklearn()
 
 
 #############################################################################

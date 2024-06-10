@@ -20,17 +20,6 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
     3. The class with the highest K-alpha value is the winning class.
     """
 
-    def _validate_params(self):
-        """
-        If it was a classifier, predict_proba must return one value per class.
-        In the Choquet integral, the K-alpha and K-beta mappings are computed for each class,
-          so two values are returned.
-        Fixing it as a regressor forces sklearn to call predict instead of predict_proba. However,
-            the predict method is not implemented as regressor, but as a classifier.
-        """
-        super()._validate_params()
-        self._estimator_type = "regressor"
-
     def predict_proba(self, X: np.array) -> np.array:
         """
         Predict class probabilities for X.
@@ -43,7 +32,7 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
         Returns
         -------
         - y : array-like of shape (n_samples, n_classes, 2)
-            Class probabilities of the input samples, in the form of intervals.
+            Class probabilities of the input samples.
         """
         y = self._predict_ensembles_proba(X=X)
 
@@ -51,57 +40,15 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
         y_flattened = y.reshape((-1, y.shape[2], y.shape[3]))
 
         # Run in parallel mode
-        # The output is reshaped to the original shape but the dimension of each model (which
-        #   each agreggated by the choquet integral)
+        # The output is reshaped to the original shape but the dimension of each model (which each agreggated by the choquet integral)
         y = np.array(
             Parallel(n_jobs=self.n_jobs)(delayed(self.intvl_choquet_integ)(intvl_set) for intvl_set in y_flattened),
         ).reshape((y.shape[0], y.shape[1], y.shape[3]))
 
-        return y
+        # Apply the K-alpha mapping to each interval prediction. It multiplies the infimum by 1-alpha and the supremum by alpha.
+        alpha_mapping = np.dot(y[:, :, :], [1 - self.alpha, self.alpha])
 
-    def predict(self, X: np.array) -> np.array:
-        """
-        Predict class labels for X.
-
-        For each sample, the winning class is the higher ranked in the order
-        determined by the K-alpha and K-beta mappings.
-
-        Parameters
-        ----------
-        - X : array-like of shape (n_frec_ranges, n_samples, n_features)
-            Input samples.
-
-        Returns
-        -------
-        - y : array-like of shape (n_samples,)
-            Predicted class label per sample.
-        """
-        # Obtain the class probabilities predictions
-        class_probs = self.predict_proba(X)  # Shape (n_samples, n_classes, 2) -> alpha and beta mappings
-
-        # Apply the K-alpha and K-beta mappings to each interval prediction. It multiplies the infimum by
-        #   1-alpha or 1-beta and the supremum by alpha or beta.
-        alpha_mapping = np.dot(class_probs[:, :, :], [1 - self.alpha, self.alpha])
-        beta_mapping = np.dot(class_probs[:, :, :], [1 - self.beta, self.beta])
-
-        # class_probs = np.stack((alpha_mapping, beta_mapping), axis=2)
-
-        # # For each sample, return the class with the highest K-alpha,K-beta mapping
-        # def k_alpha_beta_argmax(sample):
-        #     max_index = 0
-        #     max_value = sample[0]  # Contains the K-alpha and K-beta mappings
-
-        #     for i in range(1, len(sample)):
-        #         if (sample[i][0] > max_value[0]) or (sample[i][0] == max_value[0] and sample[i][1] > max_value[1]):
-        #             max_index = i
-        #             max_value = sample[i]
-
-        #     return max_index
-
-        # # Return the winning class for each of the samples received
-        # return np.array([k_alpha_beta_argmax(sample) for sample in class_probs])
-
-        return np.argmax(np.lexsort((alpha_mapping, beta_mapping)), axis=1)
+        return alpha_mapping
 
     def intvl_choquet_integ(self, intvl_set: np.ndarray) -> np.ndarray:
         """
