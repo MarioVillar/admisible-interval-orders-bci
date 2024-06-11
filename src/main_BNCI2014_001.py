@@ -52,16 +52,16 @@ subject_data = dataset.get_data(subjects=[1])
 sfreq = subject_data[1][list(subject_data[1].keys())[0]]["0"].info["sfreq"]
 
 bpfe_mean = BandPassFilterEnsemble(
-    frec_ranges=best_params["IntvlMeanEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
+    frec_ranges=best_params["IntvlMeanEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=1
 )
 bpfe_choquet = BandPassFilterEnsemble(
-    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
+    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=1
 )
 bpfe_choquet_n_best = BandPassFilterEnsemble(
-    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
+    frec_ranges=best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=1
 )
 bpfe_sugeno = BandPassFilterEnsemble(
-    frec_ranges=best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=config.N_JOBS
+    frec_ranges=best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"], sfreq=sfreq, n_jobs=1
 )
 
 
@@ -70,22 +70,22 @@ bpfe_sugeno = BandPassFilterEnsemble(
 cspe_mean = CSPEnsemble(
     n_components=config.CSP_COMPONENTS,
     n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"]),
-    n_jobs=config.N_JOBS,
+    n_jobs=1,
 )
 cspe_choquet = CSPEnsemble(
     n_components=config.CSP_COMPONENTS,
     n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
-    n_jobs=config.N_JOBS,
+    n_jobs=1,
 )
 cspe_choquet_n_best = CSPEnsemble(
     n_components=config.CSP_COMPONENTS,
     n_frec_ranges=len(best_params["IntvlChoquetEnsemble"]["freq_bands_ranges"]),
-    n_jobs=config.N_JOBS,
+    n_jobs=1,
 )
 cspe_sugeno = CSPEnsemble(
     n_components=config.CSP_COMPONENTS,
     n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
-    n_jobs=config.N_JOBS,
+    n_jobs=1,
 )
 
 
@@ -99,7 +99,7 @@ clf_mean = IntvlMeanEnsemble.create_ensemble(
     model_class_names=config.MODEL_CLASS_NAMES,
     n_frec_ranges=len(best_params["IntvlMeanEnsemble"]["freq_bands_ranges"]),
     model_class_kwargs=best_params["IntvlMeanEnsemble"]["param_comb"],
-    n_jobs=config.N_JOBS,
+    n_jobs=1,
 )
 
 clf_choquet = IntvlChoquetEnsemble.create_ensemble(
@@ -109,7 +109,7 @@ clf_choquet = IntvlChoquetEnsemble.create_ensemble(
     model_class_kwargs=best_params["IntvlChoquetEnsemble"]["param_comb"],
     alpha=config.K_ALPHA,
     beta=config.K_BETA,
-    n_jobs=config.N_JOBS,
+    n_jobs=1,
 )
 
 clf_choquet_n_best = IntvlChoquetEnsemble.create_ensemble(
@@ -120,7 +120,7 @@ clf_choquet_n_best = IntvlChoquetEnsemble.create_ensemble(
     alpha=config.K_ALPHA,
     beta=config.K_BETA,
     choquet_n_permu=config.N_ADMIS_PERMU,
-    n_jobs=config.N_JOBS,
+    n_jobs=1,
 )
 
 clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
@@ -128,7 +128,9 @@ clf_sugeno = IntvlSugenoEnsemble.create_ensemble(
     model_class_names=config.MODEL_CLASS_NAMES,
     n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
     model_class_kwargs=best_params["IntvlSugenoEnsemble"]["param_comb"],
-    n_jobs=config.N_JOBS,
+    alpha=config.K_ALPHA,
+    beta=config.K_BETA,
+    n_jobs=1,
 )
 
 ##############################################################################

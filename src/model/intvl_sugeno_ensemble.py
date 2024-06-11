@@ -67,8 +67,12 @@ class IntvlSugenoEnsemble(IntvlEnsembleBlock):
         - sugeno_integral : float
             Sugeno integral of the intervals.
         """
-        # Sort the array using lexicographical order
-        x_sorted = x[np.lexsort((x[:, 1], x[:, 0]))]
+        # Sort the array using K-alpha mappings and, when ties, using K-beta mappings
+        #   Apply the K-alpha and K-beta mappings to each interval prediction. It multiplies the infimum by
+        #   1-alpha or 1-beta and the supremum by alpha or beta.
+        x_k_alpha = np.dot(x, [1 - self.alpha, self.alpha])
+        x_k_beta = np.dot(x, [1 - self.beta, self.beta])
+        x_sorted = x[np.lexsort((x_k_alpha, x_k_beta))]
 
         # Append the fuzzy measure values to the sorted array
         # The first value is not used because it corresponds to the empty set (not used in sugeno integral

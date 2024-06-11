@@ -153,6 +153,8 @@ for subject in range(1, 110):
         model_class_names=config.MODEL_CLASS_NAMES,
         n_frec_ranges=len(best_params["IntvlSugenoEnsemble"]["freq_bands_ranges"]),
         model_class_kwargs=best_params["IntvlSugenoEnsemble"]["param_comb"],
+        alpha=config.K_ALPHA,
+        beta=config.K_BETA,
     )
 
     ##############################################################################
