@@ -96,13 +96,7 @@ def bar_plot_by_subject(
         yaxis_title="Subject",
         plot_bgcolor="white",
         font=dict(family="Times New Roman", size=22),
-        legend=dict(
-            orientation="h",
-            y=-0.25,
-            x=0.5,
-            xanchor="center",
-            yanchor="bottom",
-        ),
+        legend=dict(orientation="h", y=-0.25, x=0.5, xanchor="center", yanchor="bottom"),
         margin=dict(t=20),
     )
 
@@ -117,9 +111,11 @@ def bar_plot_by_subject(
     return fig
 
 
-def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, img_name: str = None):
+def line_plot_by_time_intvl(
+    results: pd.DataFrame, plot_std: bool = True, save_to_disk: bool = False, img_name: str = None
+):
     """
-    Plot the classification accuracy over time intervals.
+    Plot the classification ROC AUC over time intervals.
 
     Parameters
     ----------
@@ -139,11 +135,19 @@ def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, i
     fig = go.Figure()
 
     colors = {
-        "IntvlMeanEnsemble": "#A4CE95",
-        "IntvlChoquetEnsemble": "#5F5D9C",
-        "IntvlChoquetEnsembleNBest": "#a897ff",
-        "IntvlSugenoEnsemble": "#6196A6",
-        "CSP-LDA": "#F7DCB9",
+        "IntvlMeanEnsemble": "rgba(164, 206, 149, 1)",
+        "IntvlChoquetEnsemble": "rgba(95, 93, 156, 1)",
+        "IntvlChoquetEnsembleNBest": "rgba(168, 151, 255, 1)",
+        "IntvlSugenoEnsemble": "rgba(97, 150, 166, 1)",
+        "CSP-LDA": "rgba(247, 220, 185, 1)",
+    }
+
+    colors_light = {
+        "IntvlMeanEnsemble": "rgba(164, 206, 149, 0.2)",
+        "IntvlChoquetEnsemble": "rgba(95, 93, 156, 0.2)",
+        "IntvlChoquetEnsembleNBest": "rgba(168, 151, 255, 0.2)",
+        "IntvlSugenoEnsemble": "rgba(97, 150, 166, 0.2)",
+        "CSP-LDA": "rgba(247, 220, 185, 0.2)",
     }
 
     legend_names = {
@@ -154,13 +158,35 @@ def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, i
         "CSP-LDA": "CSP + LDA",
     }
 
+    w_times = results.iloc[0]["w_times"]  # Same for every subject and model
+
+    if plot_std:
+        # For each model in the results dataframe
+        for pipeline in legend_names.keys():
+            if pipeline in results["pipeline"].values:
+                scores = np.array(results[results["pipeline"] == pipeline]["scores"].to_list())
+
+                mean_scores = scores.mean(axis=(0, 1))
+                std_scores = scores.std(axis=(0, 1))
+
+                fig.add_trace(
+                    go.Scatter(
+                        x=np.append(w_times, w_times[::-1]),
+                        y=np.append(mean_scores + std_scores, (mean_scores - std_scores)[::-1]),
+                        fill="toself",
+                        fillcolor=colors_light[pipeline],
+                        line_color="rgba(255,255,255,0)",
+                        showlegend=False,
+                        name=legend_names[pipeline],
+                    )
+                )
+
     # For each model in the results dataframe
     for pipeline in legend_names.keys():
         if pipeline in results["pipeline"].values:
-            scores = results[results["pipeline"] == pipeline].iloc[0]["scores"]
-            w_times = results[results["pipeline"] == pipeline].iloc[0]["w_times"]
+            scores = np.array(results[results["pipeline"] == pipeline]["scores"].to_list())
 
-            mean_scores = np.Mean(scores, 0)
+            mean_scores = scores.mean(axis=(0, 1))
 
             # Add score line
             fig.add_trace(
@@ -185,13 +211,13 @@ def line_plot_by_time_intvl(results: pd.DataFrame, save_to_disk: bool = False, i
 
     fig.update_layout(
         xaxis_title="Time interval (s)",
-        yaxis_title="Classification accuracy",
+        yaxis_title="Classification ROC AUC",
         title=None,
-        legend=dict(font=dict(size=14), orientation="h"),
         plot_bgcolor="#f2f2f2",
-        height=600,
-        width=1000,
-        font=dict(family="Times New Roman"),
+        height=550,
+        width=1100,
+        font=dict(family="Times New Roman", size=17),
+        legend=dict(orientation="h", y=-0.2, x=0.5, xanchor="center"),
         margin=dict(t=40),
     )
 
