@@ -166,10 +166,15 @@ class IntvlChoquetEnsemble(IntvlEnsembleBlock):
 
         # Get the pairs of intervals in which the first interval is smaller than the second one.
         # Check the method docummentation for further information on how intervals are compared.
-        ele_check_mask = (intvl_set[first_ele_idx][:, 0] < intvl_set[second_ele_idx][:, 0]) | (
-            (intvl_set[first_ele_idx][:, 0] == intvl_set[second_ele_idx][:, 0])
-            & (intvl_set[first_ele_idx][:, 1] < intvl_set[second_ele_idx][:, 1])
+        ele_check_mask = (intvl_set[first_ele_idx][:, 0] <= intvl_set[second_ele_idx][:, 0]) & (
+            intvl_set[first_ele_idx][:, 1] <= intvl_set[second_ele_idx][:, 1]
         )
+
+        # This following mask would be using the lexicographical order with respect to the first component.
+        # ele_check_mask = (intvl_set[first_ele_idx][:, 0] < intvl_set[second_ele_idx][:, 0]) | (
+        #     (intvl_set[first_ele_idx][:, 0] == intvl_set[second_ele_idx][:, 0])
+        #     & (intvl_set[first_ele_idx][:, 1] < intvl_set[second_ele_idx][:, 1])
+        # )
 
         # Get the actual indexes that have to be checked.
         first_ele_idx = first_ele_idx[ele_check_mask]
