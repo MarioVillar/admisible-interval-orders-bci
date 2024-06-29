@@ -184,7 +184,9 @@ def line_plot_by_time_intvl(
     # For each model in the results dataframe
     for pipeline in legend_names.keys():
         if pipeline in results["pipeline"].values:
-            scores = np.array(results[results["pipeline"] == pipeline]["scores"].to_list())
+            scores = results[results["pipeline"] == pipeline]["scores"].to_list()
+            min_len = min([len(fold) for subject in scores for fold in subject])
+            scores = np.array([[fold[:min_len] for fold in subject] for subject in scores])
 
             mean_scores = scores.mean(axis=(0, 1))
 
