@@ -1,16 +1,20 @@
-# Choquet Interval Ensemble for Motor Imager
+# Choquet Interval Ensemble for Motor Imagery
 
 The proposed prediction pipeline is the following:
 
 ![Prediction pipeline](/prediction_pipeline.png)
 
-The intervalar Choquet integral is applied as follows:
+With each model ensemble being:
+
+<img src="Model_ensemble.png" alt="Model ensemble" width="200"/>
+
+The intervalar Choquet integral is computed as follows:
 
 ![Intervalar Choquet integral](/int_choquet_integ.png)
 
 ## Table of contents
 
-- [Choquet Interval Ensemble for Motor Imager](#choquet-interval-ensemble-for-motor-imager)
+- [Choquet Interval Ensemble for Motor Imagery](#choquet-interval-ensemble-for-motor-imagery)
   - [Table of contents](#table-of-contents)
 - [Project configuration](#project-configuration)
   - [Configuration variables](#configuration-variables)
@@ -28,9 +32,12 @@ The file [config.py](src/config.py) holds the value for various configuration va
 The following variables should be defined in the environment where the code is running:
 
 ```
-SAVE_TO_DISK: whether to save the results to disk or not (True|False)
-SAVE_HDF5: whether to save the models to disk using HDF5 or not (True|False)
-DISK_PATH: path where results are stored in disk (string)
+SAVE_TO_DISK (True|False): whether to save the results to disk or not
+SAVE_HDF5 (True|False): whether to save the models to disk using HDF5 or not
+DISK_PATH (string): path where results are stored in disk
+BNCI2014_001_GS_RESULTS (string): file name of the file containing the grid search results
+BNCI2014_001_MAIN_RESULTS (string): file name of the file containing the results in dataset BNCI2014_001
+EEGBCI_TIME_INTVLS_MAIN_RESULTS (string): file name of the file containing the results in dataset EEGBCI
 ```
 
 If they are included in a [.env](.env) file in the root directory of the project, they will be automatically loaded.
